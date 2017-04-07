@@ -17,10 +17,10 @@
  *******************************************************************************/
 package com.linagora.james.mailets;
 
+import static net.javacrumbs.jsonunit.fluent.JsonFluentAssert.assertThatJson;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
-import static net.javacrumbs.jsonunit.fluent.JsonFluentAssert.assertThatJson;
 
 import java.util.Properties;
 
@@ -41,10 +41,12 @@ import org.junit.rules.ExpectedException;
 import org.mockserver.client.server.MockServerClient;
 import org.mockserver.junit.MockServerRule;
 import org.mockserver.matchers.Times;
+import org.mockserver.model.HttpCallback;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.model.Parameter;
 
+import com.google.common.base.Throwables;
 import com.google.common.collect.ImmutableList;
 import com.linagora.james.mailets.json.FakeUUIDGenerator;
 
@@ -97,6 +99,110 @@ public class GuessClassificationMailetTest {
     }
 
     @Test
+    public void initShouldThrowWhenTimeOutInMsIsEmpty() throws Exception {
+        expectedException.expect(MessagingException.class);
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .setProperty("serviceUrl", "my url")
+            .setProperty(GuessClassificationMailet.TIMEOUT_IN_MS, "")
+            .build();
+
+        GuessClassificationMailet testee = new GuessClassificationMailet();
+        testee.init(config);
+    }
+
+    @Test
+    public void initShouldThrowWhenTimeOutInMsIsInvalid() throws Exception {
+        expectedException.expect(MessagingException.class);
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .setProperty("serviceUrl", "my url")
+            .setProperty(GuessClassificationMailet.TIMEOUT_IN_MS, "invalid")
+            .build();
+
+        GuessClassificationMailet testee = new GuessClassificationMailet();
+        testee.init(config);
+    }
+
+    @Test
+    public void initShouldThrowWhenTimeOutInMsIsNegative() throws Exception {
+        expectedException.expect(MessagingException.class);
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .setProperty("serviceUrl", "my url")
+            .setProperty(GuessClassificationMailet.TIMEOUT_IN_MS, "-1")
+            .build();
+
+        GuessClassificationMailet testee = new GuessClassificationMailet();
+        testee.init(config);
+    }
+
+    @Test
+    public void initShouldThrowWhenTimeOutInMsIsZero() throws Exception {
+        expectedException.expect(MessagingException.class);
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .setProperty("serviceUrl", "my url")
+            .setProperty(GuessClassificationMailet.TIMEOUT_IN_MS, "0")
+            .build();
+
+        GuessClassificationMailet testee = new GuessClassificationMailet();
+        testee.init(config);
+    }
+
+    @Test
+    public void initShouldThrowWhenThreadCountIsEmpty() throws Exception {
+        expectedException.expect(MessagingException.class);
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .setProperty("serviceUrl", "my url")
+            .setProperty(GuessClassificationMailet.THREAD_COUNT, "")
+            .build();
+
+        GuessClassificationMailet testee = new GuessClassificationMailet();
+        testee.init(config);
+    }
+
+    @Test
+    public void initShouldThrowWhenThreadCountIsInvalid() throws Exception {
+        expectedException.expect(MessagingException.class);
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .setProperty("serviceUrl", "my url")
+            .setProperty(GuessClassificationMailet.THREAD_COUNT, "invalid")
+            .build();
+
+        GuessClassificationMailet testee = new GuessClassificationMailet();
+        testee.init(config);
+    }
+
+    @Test
+    public void initShouldThrowWhenThreadCountIsNegative() throws Exception {
+        expectedException.expect(MessagingException.class);
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .setProperty("serviceUrl", "my url")
+            .setProperty(GuessClassificationMailet.THREAD_COUNT, "-1")
+            .build();
+
+        GuessClassificationMailet testee = new GuessClassificationMailet();
+        testee.init(config);
+    }
+
+    @Test
+    public void initShouldThrowWhenThreadCountIsZero() throws Exception {
+        expectedException.expect(MessagingException.class);
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .setProperty("serviceUrl", "my url")
+            .setProperty(GuessClassificationMailet.THREAD_COUNT, "0")
+            .build();
+
+        GuessClassificationMailet testee = new GuessClassificationMailet();
+        testee.init(config);
+    }
+
+    @Test
     public void serviceUrlShouldEqualsPropertyWhenGiven() throws Exception {
         FakeMailetConfig config = FakeMailetConfig.builder()
                 .setProperty(GuessClassificationMailet.SERVICE_URL, "my url")
@@ -106,6 +212,30 @@ public class GuessClassificationMailetTest {
         testee.init(config);
         
         assertThat(testee.serviceUrl).isEqualTo("my url");
+    }
+
+    @Test
+    public void timeoutInMsShouldDefaultToEmpty() throws Exception {
+        GuessClassificationMailet testee = new GuessClassificationMailet();
+
+        testee.init(FakeMailetConfig.builder()
+            .setProperty("serviceUrl", "my url")
+            .build());
+
+        assertThat(testee.timeoutInMs).isEmpty();
+    }
+
+    @Test
+    public void timeoutInMsShouldEqualsPropertyWhenGiven() throws Exception {
+        GuessClassificationMailet testee = new GuessClassificationMailet();
+
+        int timeout = 10;
+        testee.init(FakeMailetConfig.builder()
+            .setProperty("serviceUrl", "my url")
+            .setProperty(GuessClassificationMailet.TIMEOUT_IN_MS, String.valueOf(timeout))
+            .build());
+
+        assertThat(testee.timeoutInMs).contains(timeout);
     }
 
     @Test
@@ -212,4 +342,57 @@ public class GuessClassificationMailetTest {
         assertThatJson(header[0])
             .isEqualTo(response);
     }
+
+    @Test
+    public void serviceShouldNotAddHeadersWhenTimeoutExceeded() throws Exception {
+        int timeoutInMs = 10;
+
+        mockServerClient
+            .when(HttpRequest.request()
+                    .withMethod("POST")
+                    .withPath("/email/classification/predict")
+                    .withQueryStringParameter(new Parameter("recipients", "to@james.org", "cc@james.org"))
+                    .withBody("{\"messageId\":\"524e4f85-2d2f-4927-ab98-bd7a2f689773\"," +
+                        "\"from\":[{\"name\":\"From\",\"address\":\"from@james.org\"}]," +
+                        "\"recipients\":{\"to\":[{\"name\":null,\"address\":\"to@james.org\"}]," +
+                        "\"cc\":[{\"name\":null,\"address\":\"cc@james.org\"}]," +
+                        "\"bcc\":[]}," +
+                        "\"subject\":[\"my subject\"]," +
+                        "\"textBody\":\"this is my body\"}"),
+                Times.exactly(1))
+            .callback(new AwaitCallback(2 * timeoutInMs));
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .setProperty("serviceUrl", "http://localhost:" + mockServerRule.getPort() + "/email/classification/predict")
+            .setProperty(GuessClassificationMailet.TIMEOUT_IN_MS, String.valueOf(timeoutInMs))
+            .build();
+        GuessClassificationMailet testee = new GuessClassificationMailet(new FakeUUIDGenerator());
+        testee.init(config);
+
+        MimeMessage message = MimeMessageBuilder.mimeMessageBuilder()
+            .addFrom(new InternetAddress("from@james.org", "From"))
+            .addToRecipient("to@james.org")
+            .addCcRecipient("cc@james.org")
+            .setSubject("my subject")
+            .setText("this is my body")
+            .build();
+        FakeMail mail = FakeMail.from(message);
+        mail.setRecipients(ImmutableList.of(new MailAddress("to@james.org"), new MailAddress("cc@james.org")));
+
+        testee.service(mail);
+
+        String[] header = message.getHeader(GuessClassificationMailet.HEADER_NAME_DEFAULT_VALUE);
+        assertThat(header).isNull();
+    }
+
+    static class AwaitCallback extends HttpCallback {
+        AwaitCallback(int timeoutInMs) {
+            try {
+                Thread.sleep(timeoutInMs);
+            } catch (InterruptedException e) {
+                Throwables.propagate(e);
+            }
+        }
+    }
+
 }
