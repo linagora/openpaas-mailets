@@ -48,7 +48,6 @@ import org.mockserver.model.HttpResponse;
 import org.mockserver.model.Parameter;
 
 import com.google.common.base.Throwables;
-import com.google.common.collect.ImmutableList;
 import com.linagora.james.mailets.json.FakeUUIDGenerator;
 
 public class GuessClassificationMailetTest {
@@ -291,13 +290,21 @@ public class GuessClassificationMailetTest {
         MimeMessage message = new MimeMessage(Session.getDefaultInstance(new Properties()));
         FakeMail mail = FakeMail.from(message);
         
-        String header = "{\"user@james.org\":{\"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\",\"mailboxName\":\"JAMES\",\"confidence\":50.07615280151367}}";
+        String header = "{\"user@james.org\":{" +
+            "    \"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
+            "    \"mailboxName\":\"JAMES\"," +
+            "    \"confidence\":50.07615280151367}" +
+            "}";
         testee.addHeaders(mail, header);
 
         PerRecipientHeaders expected = new PerRecipientHeaders();
         expected.addHeaderForRecipient(PerRecipientHeaders.Header.builder()
             .name(HEADER_NAME_DEFAULT_VALUE)
-            .value("{\"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\",\"mailboxName\":\"JAMES\",\"confidence\":50.07615280151367}")
+            .value("{" +
+                "    \"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
+                "    \"mailboxName\":\"JAMES\"," +
+                "    \"confidence\":50.07615280151367" +
+                "}")
             .build(),
             new MailAddress("user@james.org"));
 
@@ -308,9 +315,9 @@ public class GuessClassificationMailetTest {
     @Test
     public void serviceShouldAddHeaderWhenServerRespond() throws Exception {
         String response = "{\"user@james.org\":{" +
-                "\"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
-                "\"mailboxName\":\"JAMES\"," +
-                "\"confidence\":50.07615280151367}" +
+                "    \"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
+                "    \"mailboxName\":\"JAMES\"," +
+                "    \"confidence\":50.07615280151367}" +
                 "}";
         mockServerClient
             .when(HttpRequest.request()
@@ -333,15 +340,16 @@ public class GuessClassificationMailetTest {
         GuessClassificationMailet testee = new GuessClassificationMailet(new FakeUUIDGenerator());
         testee.init(config);
 
-        MimeMessage message = MimeMessageBuilder.mimeMessageBuilder()
-            .addFrom(new InternetAddress("from@james.org", "From"))
-            .addToRecipient("to@james.org")
-            .addCcRecipient("cc@james.org")
-            .setSubject("my subject")
-            .setText("this is my body")
+        FakeMail mail = FakeMail.builder()
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .addFrom(new InternetAddress("from@james.org", "From"))
+                .addToRecipient("to@james.org")
+                .addCcRecipient("cc@james.org")
+                .setSubject("my subject")
+                .setText("this is my body")
+                .build())
+            .recipients(new MailAddress("to@james.org"), new MailAddress("cc@james.org"))
             .build();
-        FakeMail mail = FakeMail.from(message);
-        mail.setRecipients(ImmutableList.of(new MailAddress("to@james.org"), new MailAddress("cc@james.org")));
 
         testee.service(mail);
 
@@ -351,6 +359,65 @@ public class GuessClassificationMailetTest {
                 .value("{\"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\",\"mailboxName\":\"JAMES\",\"confidence\":50.07615280151367}")
                 .build(),
             new MailAddress("user@james.org"));
+        assertThat(mail.getPerRecipientSpecificHeaders()).isEqualTo(expected);
+    }
+
+    @Test
+    public void serviceShouldMultipleHeadersWhenSeveralRecipientsInAnswer() throws Exception {
+        String response = "{\"to@james.org\":{" +
+            "    \"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
+            "    \"mailboxName\":\"JAMES\"," +
+            "    \"confidence\":50.07615280151367}," +
+            "\"cc@james.org\":{" +
+            "    \"mailboxId\":\"35131515-5455-5555-5555-488784511515\"," +
+            "    \"mailboxName\":\"README\"," +
+            "    \"confidence\":50.07615280151367}" +
+            "}";
+        mockServerClient
+            .when(HttpRequest.request()
+                    .withMethod("POST")
+                    .withPath("/email/classification/predict")
+                    .withQueryStringParameter(new Parameter("recipients", "to@james.org", "cc@james.org"))
+                    .withBody("{\"messageId\":\"524e4f85-2d2f-4927-ab98-bd7a2f689773\"," +
+                        "\"from\":[{\"name\":\"From\",\"address\":\"from@james.org\"}]," +
+                        "\"recipients\":{\"to\":[{\"name\":null,\"address\":\"to@james.org\"}]," +
+                        "\"cc\":[{\"name\":null,\"address\":\"cc@james.org\"}]," +
+                        "\"bcc\":[]}," +
+                        "\"subject\":[\"my subject\"]," +
+                        "\"textBody\":\"this is my body\"}"),
+                Times.exactly(1))
+            .respond(HttpResponse.response(response));
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .setProperty(GuessClassificationMailet.SERVICE_URL, "http://localhost:" + mockServerRule.getPort() + "/email/classification/predict")
+            .build();
+        GuessClassificationMailet testee = new GuessClassificationMailet(new FakeUUIDGenerator());
+        testee.init(config);
+
+        FakeMail mail = FakeMail.builder()
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .addFrom(new InternetAddress("from@james.org", "From"))
+                .addToRecipient("to@james.org")
+                .addCcRecipient("cc@james.org")
+                .setSubject("my subject")
+                .setText("this is my body")
+                .build())
+            .recipients(new MailAddress("to@james.org"), new MailAddress("cc@james.org"))
+            .build();
+
+        testee.service(mail);
+
+        PerRecipientHeaders expected = new PerRecipientHeaders();
+        expected.addHeaderForRecipient(PerRecipientHeaders.Header.builder()
+                .name(HEADER_NAME_DEFAULT_VALUE)
+                .value("{\"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\",\"mailboxName\":\"JAMES\",\"confidence\":50.07615280151367}")
+                .build(),
+            new MailAddress("to@james.org"));
+        expected.addHeaderForRecipient(PerRecipientHeaders.Header.builder()
+                .name(HEADER_NAME_DEFAULT_VALUE)
+                .value("{\"mailboxId\":\"35131515-5455-5555-5555-488784511515\",\"mailboxName\":\"README\",\"confidence\":50.07615280151367}")
+                .build(),
+            new MailAddress("cc@james.org"));
         assertThat(mail.getPerRecipientSpecificHeaders()).isEqualTo(expected);
     }
 
@@ -380,15 +447,16 @@ public class GuessClassificationMailetTest {
         GuessClassificationMailet testee = new GuessClassificationMailet(new FakeUUIDGenerator());
         testee.init(config);
 
-        MimeMessage message = MimeMessageBuilder.mimeMessageBuilder()
-            .addFrom(new InternetAddress("from@james.org", "From"))
-            .addToRecipient("to@james.org")
-            .addCcRecipient("cc@james.org")
-            .setSubject("my subject")
-            .setText("this is my body")
+        FakeMail mail = FakeMail.builder()
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .addFrom(new InternetAddress("from@james.org", "From"))
+                .addToRecipient("to@james.org")
+                .addCcRecipient("cc@james.org")
+                .setSubject("my subject")
+                .setText("this is my body")
+                .build())
+            .recipients(new MailAddress("to@james.org"), new MailAddress("cc@james.org"))
             .build();
-        FakeMail mail = FakeMail.from(message);
-        mail.setRecipients(ImmutableList.of(new MailAddress("to@james.org"), new MailAddress("cc@james.org")));
 
         testee.service(mail);
 
