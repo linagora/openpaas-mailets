@@ -151,9 +151,13 @@ public class GuessClassificationMailet extends GenericMailet {
 
     @Override
     public void service(Mail mail) throws MessagingException {
-        Future<Optional<String>> predictionFuture = executorService.submit(() -> getClassificationGuess(mail));
-        awaitTimeout(predictionFuture)
-            .ifPresent(classificationGuess -> addHeader(mail, classificationGuess));
+        try {
+            Future<Optional<String>> predictionFuture = executorService.submit(() -> getClassificationGuess(mail));
+            awaitTimeout(predictionFuture)
+                .ifPresent(classificationGuess -> addHeader(mail, classificationGuess));
+        } catch (Exception e) {
+            LOGGER.error("Exception while calling Classification API", e);
+        }
     }
 
     private Optional<String> awaitTimeout(Future<Optional<String>> objectFuture) {
