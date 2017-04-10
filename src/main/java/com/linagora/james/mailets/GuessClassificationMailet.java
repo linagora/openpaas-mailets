@@ -181,7 +181,7 @@ public class GuessClassificationMailet extends GenericMailet {
                 return objectFuture.get();
             }
         } catch (TimeoutException e) {
-            LOGGER.info("Could not retrieve prediction before timeout of " + timeoutInMs);
+            LOGGER.warn("Could not retrieve prediction before timeout of " + timeoutInMs);
             return Optional.empty();
         } catch (InterruptedException|ExecutionException e) {
             LOGGER.error("Could not retrieve prediction", e);
