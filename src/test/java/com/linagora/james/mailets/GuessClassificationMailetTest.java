@@ -17,7 +17,7 @@
  *******************************************************************************/
 package com.linagora.james.mailets;
 
-import static net.javacrumbs.jsonunit.fluent.JsonFluentAssert.assertThatJson;
+import static com.linagora.james.mailets.GuessClassificationMailet.HEADER_NAME_DEFAULT_VALUE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
@@ -32,6 +32,7 @@ import javax.mail.internet.MimeMessage;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailAddress;
 import org.apache.mailet.MailetException;
+import org.apache.mailet.PerRecipientHeaders;
 import org.apache.mailet.base.test.FakeMail;
 import org.apache.mailet.base.test.FakeMailetConfig;
 import org.apache.mailet.base.test.MimeMessageBuilder;
@@ -276,7 +277,7 @@ public class GuessClassificationMailetTest {
             .thenThrow(new MessagingException());
         
         GuessClassificationMailet testee = new GuessClassificationMailet();
-        testee.addHeader(mail, "");
+        testee.addHeaders(mail, "");
     }
 
     @Test
@@ -291,10 +292,17 @@ public class GuessClassificationMailetTest {
         FakeMail mail = FakeMail.from(message);
         
         String header = "{\"user@james.org\":{\"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\",\"mailboxName\":\"JAMES\",\"confidence\":50.07615280151367}}";
-        testee.addHeader(mail, header);
-        
-        assertThat(message.getHeader(GuessClassificationMailet.HEADER_NAME_DEFAULT_VALUE))
-            .contains(header);
+        testee.addHeaders(mail, header);
+
+        PerRecipientHeaders expected = new PerRecipientHeaders();
+        expected.addHeaderForRecipient(PerRecipientHeaders.Header.builder()
+            .name(HEADER_NAME_DEFAULT_VALUE)
+            .value("{\"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\",\"mailboxName\":\"JAMES\",\"confidence\":50.07615280151367}")
+            .build(),
+            new MailAddress("user@james.org"));
+
+        assertThat(mail.getPerRecipientSpecificHeaders())
+            .isEqualTo(expected);
     }
 
     @Test
@@ -337,10 +345,13 @@ public class GuessClassificationMailetTest {
 
         testee.service(mail);
 
-        String[] header = message.getHeader(GuessClassificationMailet.HEADER_NAME_DEFAULT_VALUE);
-        assertThat(header).hasSize(1);
-        assertThatJson(header[0])
-            .isEqualTo(response);
+        PerRecipientHeaders expected = new PerRecipientHeaders();
+        expected.addHeaderForRecipient(PerRecipientHeaders.Header.builder()
+                .name(HEADER_NAME_DEFAULT_VALUE)
+                .value("{\"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\",\"mailboxName\":\"JAMES\",\"confidence\":50.07615280151367}")
+                .build(),
+            new MailAddress("user@james.org"));
+        assertThat(mail.getPerRecipientSpecificHeaders()).isEqualTo(expected);
     }
 
     @Test
@@ -381,8 +392,7 @@ public class GuessClassificationMailetTest {
 
         testee.service(mail);
 
-        String[] header = message.getHeader(GuessClassificationMailet.HEADER_NAME_DEFAULT_VALUE);
-        assertThat(header).isNull();
+        assertThat(mail.getPerRecipientSpecificHeaders()).isEqualTo(new PerRecipientHeaders());
     }
 
     static class AwaitCallback extends HttpCallback {
