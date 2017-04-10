@@ -38,9 +38,13 @@ import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableList;
 
 public class ClassificationRequestBody {
-
-
-    private static final int NO_LINE_LENGTH_LIMIT_PARSING = -1;
+    private static final MimeConfig MIME_ENTITY_CONFIG = MimeConfig.custom()
+        .setMaxContentLen(-1)
+        .setMaxHeaderCount(-1)
+        .setMaxHeaderLen(-1)
+        .setMaxHeaderCount(-1)
+        .setMaxLineLen(-1)
+        .build();
 
     public static ClassificationRequestBody from(Mail mail, UUID messageId) throws MessagingException, IOException {
         MimeMessage message = mail.getMessage();
@@ -64,7 +68,7 @@ public class ClassificationRequestBody {
 
         return MessageBuilder
                 .create()
-                .use(MimeConfig.custom().setMaxLineLen(NO_LINE_LENGTH_LIMIT_PARSING).build())
+                .use(MIME_ENTITY_CONFIG)
                 .parse(new ByteArrayInputStream(rawMessage.toByteArray()))
                 .build();
     }
