@@ -22,6 +22,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 import javax.mail.MessagingException;
@@ -49,6 +51,10 @@ import org.mockserver.model.Parameter;
 
 import com.google.common.base.Throwables;
 import com.linagora.james.mailets.json.FakeUUIDGenerator;
+
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.AppenderBase;
 
 public class GuessClassificationMailetTest {
 
@@ -473,4 +479,47 @@ public class GuessClassificationMailetTest {
         }
     }
 
+    @Test
+    public void serviceShouldLogAndNotThrowWhenExceptionOccured() throws Exception {
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+                .setProperty(GuessClassificationMailet.SERVICE_URL, "http://localhost:" + mockServerRule.getPort() + "/email/classification/predict")
+                .build();
+        GuessClassificationMailet testee = new GuessClassificationMailet(new FakeUUIDGenerator());
+        testee.init(config);
+        // Throws NPE in service method
+        testee.executorService = null;
+        MemoryAppender memoryAppender = new MemoryAppender();
+        ((Logger) GuessClassificationMailet.LOGGER).addAppender(memoryAppender);
+        memoryAppender.start();
+
+        FakeMail mail = FakeMail.builder()
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .addFrom(new InternetAddress("from@james.org", "From"))
+                .addToRecipient("to@james.org")
+                .addCcRecipient("cc@james.org")
+                .setSubject("my subject")
+                .setText("this is my body")
+                .build())
+            .recipients(new MailAddress("to@james.org"), new MailAddress("cc@james.org"))
+            .build();
+
+        testee.service(mail);
+        
+        assertThat(memoryAppender.getEvents()).containsOnly("Exception while calling Classification API");
+    }
+
+    private static class MemoryAppender extends AppenderBase<ILoggingEvent> {
+
+        public List<String> list = new ArrayList<String>();
+
+        @Override
+        protected void append(ILoggingEvent event) {
+            list.add(event.getMessage());
+        }
+        
+        public List<String> getEvents() {
+            return list;
+        }
+    }
 }

@@ -93,7 +93,7 @@ import com.linagora.james.mailets.json.UUIDGenerator;
  */
 public class GuessClassificationMailet extends GenericMailet {
 
-    private static final Logger LOGGER = LoggerFactory.getLogger(GuessClassificationMailet.class);
+    @VisibleForTesting static final Logger LOGGER = LoggerFactory.getLogger(GuessClassificationMailet.class);
 
     static final String SERVICE_URL = "serviceUrl";
     static final String HEADER_NAME = "headerName";
@@ -108,7 +108,7 @@ public class GuessClassificationMailet extends GenericMailet {
     private final UUIDGenerator uuidGenerator;
     private final ObjectMapper objectMapper;
     private final TypeReference<Map<String, ClassificationGuess>> typeReference;
-    private ExecutorService executorService;
+    @VisibleForTesting ExecutorService executorService;
 
     public GuessClassificationMailet() {
         this(new UUIDGenerator());
