@@ -363,7 +363,7 @@ public class GuessClassificationMailetTest {
     }
 
     @Test
-    public void serviceShouldMultipleHeadersWhenSeveralRecipientsInAnswer() throws Exception {
+    public void serviceShouldAddMultipleHeadersWhenSeveralRecipientsInAnswer() throws Exception {
         String response = "{\"to@james.org\":{" +
             "    \"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
             "    \"mailboxName\":\"JAMES\"," +
@@ -463,7 +463,7 @@ public class GuessClassificationMailetTest {
         assertThat(mail.getPerRecipientSpecificHeaders()).isEqualTo(new PerRecipientHeaders());
     }
 
-    static class AwaitCallback extends HttpCallback {
+    private static class AwaitCallback extends HttpCallback {
         AwaitCallback(int timeoutInMs) {
             try {
                 Thread.sleep(timeoutInMs);
