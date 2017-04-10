@@ -30,7 +30,6 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.TimeoutException;
-import java.util.function.Consumer;
 import java.util.function.Function;
 
 import javax.mail.MessagingException;
@@ -54,12 +53,14 @@ import org.slf4j.LoggerFactory;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.github.fge.lambdas.Throwing;
+import com.github.fge.lambdas.consumers.ThrowingConsumer;
+import com.github.fge.lambdas.functions.ThrowingFunction;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
-import com.linagora.james.mailets.json.ClassificationRequestBodySerializer;
 import com.google.common.collect.ImmutableMap;
 import com.linagora.james.mailets.json.ClassificationGuess;
+import com.linagora.james.mailets.json.ClassificationRequestBodySerializer;
 import com.linagora.james.mailets.json.UUIDGenerator;
 
 /**
@@ -213,27 +214,26 @@ public class GuessClassificationMailet extends GenericMailet {
     }
 
     @VisibleForTesting void addHeaders(Mail mail, String classificationGuesses) {
-        Function<String, Map<String, ClassificationGuess>> jsonToClassificationGuess = Throwing
-            .<String, Map<String, ClassificationGuess>>function(
-                s -> objectMapper.readValue(s, typeReference))
-            .fallbackTo(s -> {
-                LOGGER.error("Error occurred while deserializing classification guess");
-                return ImmutableMap.of();
-            });
+        ThrowingFunction<String, Map<String, ClassificationGuess>> readJson = s -> objectMapper.readValue(s, typeReference);
+        Function<String, Map<String, ClassificationGuess>> logFailedFunction = s -> {
+            LOGGER.error("Error occurred while deserializing classification guess");
+            return ImmutableMap.of();
+        };
 
-        Consumer<Map.Entry<String, ClassificationGuess>> addRecipientHeader = Throwing
-            .<Map.Entry<String, ClassificationGuess>>consumer(entry -> mail.addSpecificHeaderForRecipient(
-                PerRecipientHeaders.Header.builder()
-                    .name(headerName)
-                    .value(objectMapper.writeValueAsString(entry.getValue()))
-                    .build(),
-                new MailAddress(entry.getKey())))
-            .orTryWith(e -> LOGGER.error("Failed serializing " + headerName + " for " + e));
+        ThrowingConsumer<Map.Entry<String, ClassificationGuess>> addRecipientHeader = entry -> mail.addSpecificHeaderForRecipient(
+            PerRecipientHeaders.Header.builder()
+                .name(headerName)
+                .value(objectMapper.writeValueAsString(entry.getValue()))
+                .build(),
+            new MailAddress(entry.getKey()));
+        ThrowingConsumer<Map.Entry<String, ClassificationGuess>> logFailedConsumer = e -> LOGGER.error("Failed serializing " + headerName + " for " + e);
 
         Optional.ofNullable(classificationGuesses)
-            .map(jsonToClassificationGuess)
+            .map(Throwing.function(readJson)
+                .fallbackTo(logFailedFunction))
             .orElse(ImmutableMap.of())
             .entrySet()
-            .forEach(addRecipientHeader);
+            .forEach(Throwing.consumer(addRecipientHeader)
+                .orTryWith(logFailedConsumer));
     }
 }
