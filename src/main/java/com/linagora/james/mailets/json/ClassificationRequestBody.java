@@ -74,10 +74,11 @@ public class ClassificationRequestBody {
     }
 
     private static Optional<String> mainTextContent(MessageContent messageContent) {
-        return messageContent.getTextBody()
+        return messageContent.getHtmlBody()
             .filter(s -> !Strings.isNullOrEmpty(s))
             .map(Optional::of)
-            .orElse(messageContent.getHtmlBody());
+            .filter(Optional::isPresent)
+            .orElse(messageContent.getTextBody());
     }
 
     private final UUID messageId;

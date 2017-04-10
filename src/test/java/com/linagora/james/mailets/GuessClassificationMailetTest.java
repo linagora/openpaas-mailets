@@ -17,11 +17,13 @@
  *******************************************************************************/
 package com.linagora.james.mailets;
 
-import static net.javacrumbs.jsonunit.fluent.JsonFluentAssert.assertThatJson;
+import static com.linagora.james.mailets.GuessClassificationMailet.HEADER_NAME_DEFAULT_VALUE;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Properties;
 
 import javax.mail.MessagingException;
@@ -32,6 +34,7 @@ import javax.mail.internet.MimeMessage;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailAddress;
 import org.apache.mailet.MailetException;
+import org.apache.mailet.PerRecipientHeaders;
 import org.apache.mailet.base.test.FakeMail;
 import org.apache.mailet.base.test.FakeMailetConfig;
 import org.apache.mailet.base.test.MimeMessageBuilder;
@@ -47,8 +50,11 @@ import org.mockserver.model.HttpResponse;
 import org.mockserver.model.Parameter;
 
 import com.google.common.base.Throwables;
-import com.google.common.collect.ImmutableList;
 import com.linagora.james.mailets.json.FakeUUIDGenerator;
+
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.AppenderBase;
 
 public class GuessClassificationMailetTest {
 
@@ -276,7 +282,7 @@ public class GuessClassificationMailetTest {
             .thenThrow(new MessagingException());
         
         GuessClassificationMailet testee = new GuessClassificationMailet();
-        testee.addHeader(mail, "");
+        testee.addHeaders(mail, "");
     }
 
     @Test
@@ -290,19 +296,34 @@ public class GuessClassificationMailetTest {
         MimeMessage message = new MimeMessage(Session.getDefaultInstance(new Properties()));
         FakeMail mail = FakeMail.from(message);
         
-        String header = "{\"user@james.org\":{\"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\",\"mailboxName\":\"JAMES\",\"confidence\":50.07615280151367}}";
-        testee.addHeader(mail, header);
-        
-        assertThat(message.getHeader(GuessClassificationMailet.HEADER_NAME_DEFAULT_VALUE))
-            .contains(header);
+        String header = "{\"user@james.org\":{" +
+            "    \"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
+            "    \"mailboxName\":\"JAMES\"," +
+            "    \"confidence\":50.07615280151367}" +
+            "}";
+        testee.addHeaders(mail, header);
+
+        PerRecipientHeaders expected = new PerRecipientHeaders();
+        expected.addHeaderForRecipient(PerRecipientHeaders.Header.builder()
+            .name(HEADER_NAME_DEFAULT_VALUE)
+            .value("{" +
+                "\"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
+                "\"mailboxName\":\"JAMES\"," +
+                "\"confidence\":50.07615280151367" +
+                "}")
+            .build(),
+            new MailAddress("user@james.org"));
+
+        assertThat(mail.getPerRecipientSpecificHeaders())
+            .isEqualTo(expected);
     }
 
     @Test
     public void serviceShouldAddHeaderWhenServerRespond() throws Exception {
         String response = "{\"user@james.org\":{" +
-                "\"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
-                "\"mailboxName\":\"JAMES\"," +
-                "\"confidence\":50.07615280151367}" +
+                "    \"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
+                "    \"mailboxName\":\"JAMES\"," +
+                "    \"confidence\":50.07615280151367}" +
                 "}";
         mockServerClient
             .when(HttpRequest.request()
@@ -325,22 +346,85 @@ public class GuessClassificationMailetTest {
         GuessClassificationMailet testee = new GuessClassificationMailet(new FakeUUIDGenerator());
         testee.init(config);
 
-        MimeMessage message = MimeMessageBuilder.mimeMessageBuilder()
-            .addFrom(new InternetAddress("from@james.org", "From"))
-            .addToRecipient("to@james.org")
-            .addCcRecipient("cc@james.org")
-            .setSubject("my subject")
-            .setText("this is my body")
+        FakeMail mail = FakeMail.builder()
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .addFrom(new InternetAddress("from@james.org", "From"))
+                .addToRecipient("to@james.org")
+                .addCcRecipient("cc@james.org")
+                .setSubject("my subject")
+                .setText("this is my body")
+                .build())
+            .recipients(new MailAddress("to@james.org"), new MailAddress("cc@james.org"))
             .build();
-        FakeMail mail = FakeMail.from(message);
-        mail.setRecipients(ImmutableList.of(new MailAddress("to@james.org"), new MailAddress("cc@james.org")));
 
         testee.service(mail);
 
-        String[] header = message.getHeader(GuessClassificationMailet.HEADER_NAME_DEFAULT_VALUE);
-        assertThat(header).hasSize(1);
-        assertThatJson(header[0])
-            .isEqualTo(response);
+        PerRecipientHeaders expected = new PerRecipientHeaders();
+        expected.addHeaderForRecipient(PerRecipientHeaders.Header.builder()
+                .name(HEADER_NAME_DEFAULT_VALUE)
+                .value("{\"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\",\"mailboxName\":\"JAMES\",\"confidence\":50.07615280151367}")
+                .build(),
+            new MailAddress("user@james.org"));
+        assertThat(mail.getPerRecipientSpecificHeaders()).isEqualTo(expected);
+    }
+
+    @Test
+    public void serviceShouldAddMultipleHeadersWhenSeveralRecipientsInAnswer() throws Exception {
+        String response = "{\"to@james.org\":{" +
+            "    \"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
+            "    \"mailboxName\":\"JAMES\"," +
+            "    \"confidence\":50.07615280151367}," +
+            "\"cc@james.org\":{" +
+            "    \"mailboxId\":\"35131515-5455-5555-5555-488784511515\"," +
+            "    \"mailboxName\":\"README\"," +
+            "    \"confidence\":50.07615280151367}" +
+            "}";
+        mockServerClient
+            .when(HttpRequest.request()
+                    .withMethod("POST")
+                    .withPath("/email/classification/predict")
+                    .withQueryStringParameter(new Parameter("recipients", "to@james.org", "cc@james.org"))
+                    .withBody("{\"messageId\":\"524e4f85-2d2f-4927-ab98-bd7a2f689773\"," +
+                        "\"from\":[{\"name\":\"From\",\"address\":\"from@james.org\"}]," +
+                        "\"recipients\":{\"to\":[{\"name\":null,\"address\":\"to@james.org\"}]," +
+                        "\"cc\":[{\"name\":null,\"address\":\"cc@james.org\"}]," +
+                        "\"bcc\":[]}," +
+                        "\"subject\":[\"my subject\"]," +
+                        "\"textBody\":\"this is my body\"}"),
+                Times.exactly(1))
+            .respond(HttpResponse.response(response));
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .setProperty(GuessClassificationMailet.SERVICE_URL, "http://localhost:" + mockServerRule.getPort() + "/email/classification/predict")
+            .build();
+        GuessClassificationMailet testee = new GuessClassificationMailet(new FakeUUIDGenerator());
+        testee.init(config);
+
+        FakeMail mail = FakeMail.builder()
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .addFrom(new InternetAddress("from@james.org", "From"))
+                .addToRecipient("to@james.org")
+                .addCcRecipient("cc@james.org")
+                .setSubject("my subject")
+                .setText("this is my body")
+                .build())
+            .recipients(new MailAddress("to@james.org"), new MailAddress("cc@james.org"))
+            .build();
+
+        testee.service(mail);
+
+        PerRecipientHeaders expected = new PerRecipientHeaders();
+        expected.addHeaderForRecipient(PerRecipientHeaders.Header.builder()
+                .name(HEADER_NAME_DEFAULT_VALUE)
+                .value("{\"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\",\"mailboxName\":\"JAMES\",\"confidence\":50.07615280151367}")
+                .build(),
+            new MailAddress("to@james.org"));
+        expected.addHeaderForRecipient(PerRecipientHeaders.Header.builder()
+                .name(HEADER_NAME_DEFAULT_VALUE)
+                .value("{\"mailboxId\":\"35131515-5455-5555-5555-488784511515\",\"mailboxName\":\"README\",\"confidence\":50.07615280151367}")
+                .build(),
+            new MailAddress("cc@james.org"));
+        assertThat(mail.getPerRecipientSpecificHeaders()).isEqualTo(expected);
     }
 
     @Test
@@ -369,23 +453,23 @@ public class GuessClassificationMailetTest {
         GuessClassificationMailet testee = new GuessClassificationMailet(new FakeUUIDGenerator());
         testee.init(config);
 
-        MimeMessage message = MimeMessageBuilder.mimeMessageBuilder()
-            .addFrom(new InternetAddress("from@james.org", "From"))
-            .addToRecipient("to@james.org")
-            .addCcRecipient("cc@james.org")
-            .setSubject("my subject")
-            .setText("this is my body")
+        FakeMail mail = FakeMail.builder()
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .addFrom(new InternetAddress("from@james.org", "From"))
+                .addToRecipient("to@james.org")
+                .addCcRecipient("cc@james.org")
+                .setSubject("my subject")
+                .setText("this is my body")
+                .build())
+            .recipients(new MailAddress("to@james.org"), new MailAddress("cc@james.org"))
             .build();
-        FakeMail mail = FakeMail.from(message);
-        mail.setRecipients(ImmutableList.of(new MailAddress("to@james.org"), new MailAddress("cc@james.org")));
 
         testee.service(mail);
 
-        String[] header = message.getHeader(GuessClassificationMailet.HEADER_NAME_DEFAULT_VALUE);
-        assertThat(header).isNull();
+        assertThat(mail.getPerRecipientSpecificHeaders()).isEqualTo(new PerRecipientHeaders());
     }
 
-    static class AwaitCallback extends HttpCallback {
+    private static class AwaitCallback extends HttpCallback {
         AwaitCallback(int timeoutInMs) {
             try {
                 Thread.sleep(timeoutInMs);
@@ -395,4 +479,47 @@ public class GuessClassificationMailetTest {
         }
     }
 
+    @Test
+    public void serviceShouldLogAndNotThrowWhenExceptionOccured() throws Exception {
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+                .setProperty(GuessClassificationMailet.SERVICE_URL, "http://localhost:" + mockServerRule.getPort() + "/email/classification/predict")
+                .build();
+        GuessClassificationMailet testee = new GuessClassificationMailet(new FakeUUIDGenerator());
+        testee.init(config);
+        // Throws NPE in service method
+        testee.executorService = null;
+        MemoryAppender memoryAppender = new MemoryAppender();
+        ((Logger) GuessClassificationMailet.LOGGER).addAppender(memoryAppender);
+        memoryAppender.start();
+
+        FakeMail mail = FakeMail.builder()
+            .mimeMessage(MimeMessageBuilder.mimeMessageBuilder()
+                .addFrom(new InternetAddress("from@james.org", "From"))
+                .addToRecipient("to@james.org")
+                .addCcRecipient("cc@james.org")
+                .setSubject("my subject")
+                .setText("this is my body")
+                .build())
+            .recipients(new MailAddress("to@james.org"), new MailAddress("cc@james.org"))
+            .build();
+
+        testee.service(mail);
+        
+        assertThat(memoryAppender.getEvents()).containsOnly("Exception while calling Classification API");
+    }
+
+    private static class MemoryAppender extends AppenderBase<ILoggingEvent> {
+
+        public List<String> list = new ArrayList<String>();
+
+        @Override
+        protected void append(ILoggingEvent event) {
+            list.add(event.getMessage());
+        }
+        
+        public List<String> getEvents() {
+            return list;
+        }
+    }
 }
