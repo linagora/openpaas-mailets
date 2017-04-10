@@ -301,9 +301,9 @@ public class GuessClassificationMailetTest {
         expected.addHeaderForRecipient(PerRecipientHeaders.Header.builder()
             .name(HEADER_NAME_DEFAULT_VALUE)
             .value("{" +
-                "    \"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
-                "    \"mailboxName\":\"JAMES\"," +
-                "    \"confidence\":50.07615280151367" +
+                "\"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
+                "\"mailboxName\":\"JAMES\"," +
+                "\"confidence\":50.07615280151367" +
                 "}")
             .build(),
             new MailAddress("user@james.org"));
