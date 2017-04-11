@@ -1,0 +1,6 @@
+<?xml version="1.0"?>
+<domainlist class="org.apache.james.domainlist.jpa.JPADomainList">
+  <autodetect>true</autodetect>
+  <autodetectIP>true</autodetectIP>
+  <defaultDomain>localhost</defaultDomain>
+</domainlist>
