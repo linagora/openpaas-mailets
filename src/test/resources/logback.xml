@@ -18,7 +18,7 @@
 
         <logger name="org.apache.james.mailetcontainer.impl.JamesMailetContext" level="DEBUG"/>
 
-        <logger name="org.apache.james.mailetcontainer.impl.JamesMailetContext" level="DEBUG"/>
+        <logger name="com.linagora.james" level="DEBUG"/>
 
         <logger name="com.linagora" level="DEBUG" />
 
