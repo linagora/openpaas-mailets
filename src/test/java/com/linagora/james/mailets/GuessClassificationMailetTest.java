@@ -296,11 +296,13 @@ public class GuessClassificationMailetTest {
         MimeMessage message = new MimeMessage(Session.getDefaultInstance(new Properties()));
         FakeMail mail = FakeMail.from(message);
         
-        String header = "{\"user@james.org\":{" +
+        String header = "{\"results\":" +
+            "{\"user@james.org\":{" +
             "    \"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
             "    \"mailboxName\":\"JAMES\"," +
             "    \"confidence\":50.07615280151367}" +
-            "}";
+            "}," +
+            "\"errors\":{}}";
         testee.addHeaders(mail, header);
 
         PerRecipientHeaders expected = new PerRecipientHeaders();
@@ -320,11 +322,13 @@ public class GuessClassificationMailetTest {
 
     @Test
     public void serviceShouldAddHeaderWhenServerRespond() throws Exception {
-        String response = "{\"user@james.org\":{" +
+        String response = "{\"results\":" +
+                "{\"user@james.org\":{" +
                 "    \"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
                 "    \"mailboxName\":\"JAMES\"," +
                 "    \"confidence\":50.07615280151367}" +
-                "}";
+                "}," +
+                "\"errors\":{}}";
         mockServerClient
             .when(HttpRequest.request()
                    .withMethod("POST")
@@ -370,7 +374,8 @@ public class GuessClassificationMailetTest {
 
     @Test
     public void serviceShouldAddMultipleHeadersWhenSeveralRecipientsInAnswer() throws Exception {
-        String response = "{\"to@james.org\":{" +
+        String response = "{\"results\":" +
+            "{\"to@james.org\":{" +
             "    \"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
             "    \"mailboxName\":\"JAMES\"," +
             "    \"confidence\":50.07615280151367}," +
@@ -378,7 +383,8 @@ public class GuessClassificationMailetTest {
             "    \"mailboxId\":\"35131515-5455-5555-5555-488784511515\"," +
             "    \"mailboxName\":\"README\"," +
             "    \"confidence\":50.07615280151367}" +
-            "}";
+            "}," +
+            "\"errors\":{}}";
         mockServerClient
             .when(HttpRequest.request()
                     .withMethod("POST")

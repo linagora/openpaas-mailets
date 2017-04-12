@@ -156,11 +156,13 @@ public class ClassificationIntegrationTest {
     @Test
     public void classificationShouldCustomizeMailHeaders() throws Exception {
         String recipientTo = "to@" + DEFAULT_DOMAIN;
-        String response = "{\"" + recipientTo + "\":{" +
+        String response = "{\"results\":" +
+            "{\"" + recipientTo + "\":{" +
             "    \"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
             "    \"mailboxName\":\"JAMES\"," +
             "    \"confidence\":50.07615280151367}" +
-            "}";
+            "}," +
+            "\"errors\":{}}";
         mockServerClient
             .when(HttpRequest.request()
                     .withMethod("POST")
