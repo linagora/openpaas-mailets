@@ -182,7 +182,7 @@ public class MoveMailet extends GenericMailet {
             return usersRepository.getUser(recipient);
         } catch (UsersRepositoryException e) {
             LOGGER.error("Unable to retrieve username for " + recipient.asPrettyString(), e);
-            return recipient.toString();
+            return recipient.asString();
         }
     }
 }
