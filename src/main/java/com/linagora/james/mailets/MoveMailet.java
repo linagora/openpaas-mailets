@@ -46,14 +46,14 @@ import com.google.common.base.Strings;
 import com.linagora.james.mailets.json.ClassificationGuess;
 
 /**
- * This mailet move the messages in a mailbox given by the specific header.
+ * This mailet move the messages in a mailbox given by the specific attribute.
  *
- * This header has been added by the GuessClassificationMailet.
+ * This attribute has been added by the GuessClassificationMailet.
  *
  * <pre>
  * <code>
  * &lt;mailet match="All" class="MoveMailet"&gt;
- *    &lt;headerName&gt; <i>The classification message header name, default=X-Classification-Guess</i> &lt;/headerName&gt;
+ *    &lt;attributeName&gt; <i>The classification attributeName name, default</i> &lt;/com.linagora.james.mailets.ClassificationGuess&gt;
  *    &lt;threshold&gt; <i>if this threshold is reach, we move the message</i> &lt;/threadCount&gt;
  * &lt;/mailet&gt;
  * </code>
@@ -64,7 +64,7 @@ import com.linagora.james.mailets.json.ClassificationGuess;
  * <pre>
  * <code>
  * &lt;mailet match="All" class="MoveMailet"&gt;
- *    &lt;headerName&gt;X-Classification-Guess&lt;/headerName&gt;
+ *    &lt;attributeName&gt;com.linagora.james.mailets.ClassificationGuess&lt;/attributeName&gt;
  *    &lt;threshold&gt;95.0&lt;/threadCount&gt;
  * &lt;/mailet&gt;
  * </code>

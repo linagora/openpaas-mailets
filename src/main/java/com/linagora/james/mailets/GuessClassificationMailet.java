@@ -73,6 +73,7 @@ import com.linagora.james.mailets.json.UUIDGenerator;
  *    &lt;serviceUrl&gt; <i>The URL of the classification webservice</i> &lt;/serviceUrl&gt;
  *    &lt;headerName&gt; <i>The classification message header name, default=X-Classification-Guess</i> &lt;/headerName&gt;
  *    &lt;threadCount&gt; <i>The number of threads used for the timeout</i> &lt;/threadCount&gt;
+ *    &lt;attributeName&gt; <i>The classification attributeName name, default</i> &lt;/com.linagora.james.mailets.ClassificationGuess&gt;
  *    &lt;timeoutInMs&gt; <i>The timeout in milliseconds the code will wait for answer of the prediction API. If not specified, infinite.</i> &lt;/timeoutInMs&gt;
  * &lt;/mailet&gt;
  * </code>
@@ -85,6 +86,7 @@ import com.linagora.james.mailets.json.UUIDGenerator;
  * &lt;mailet match="All" class="GuessClassificationMailet"&gt;
  *    &lt;serviceUrl&gt;http://localhost:9000/email/classification/predict&lt;/serviceUrl&gt;
  *    &lt;headerName&gt;X-Classification-Guess&lt;/headerName&gt;
+ *    &lt;attributeName&gt;/com.linagora.james.mailets.ClassificationGuess&lt;
  * &lt;/mailet&gt;
  * </code>
  * </pre>
