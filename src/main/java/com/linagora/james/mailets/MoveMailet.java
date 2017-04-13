@@ -112,7 +112,14 @@ public class MoveMailet extends GenericMailet {
         if (Strings.isNullOrEmpty(thresholdAsString)) {
             throw new MailetException("'threshold' is mandatory");
         }
-        threshold = Double.parseDouble(thresholdAsString);
+        try {
+            threshold = Double.parseDouble(thresholdAsString);
+        } catch (NumberFormatException e) {
+            throw new MailetException("'threshold' should be a strictly positive double");
+        }
+        if (threshold <= 0.0) {
+            throw new MailetException("'threshold' should be a strictly positive double");
+        }
     }
 
     @Override

@@ -77,6 +77,45 @@ public class MoveMailetTest {
     }
 
     @Test
+    public void initShouldThrowWhenThresholdIsInvalid() throws Exception {
+        expectedException.expect(MailetException.class);
+        expectedException.expectMessage("'threshold' should be a strictly positive double");
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .setProperty(MoveMailet.THRESHOLD, "invalid")
+            .build();
+
+        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        testee.init(config);
+    }
+
+    @Test
+    public void initShouldThrowWhenThresholdIsNegative() throws Exception {
+        expectedException.expect(MailetException.class);
+        expectedException.expectMessage("'threshold' should be a strictly positive double");
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .setProperty(MoveMailet.THRESHOLD, "-1")
+            .build();
+
+        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        testee.init(config);
+    }
+
+    @Test
+    public void initShouldThrowWhenThresholdIsZero() throws Exception {
+        expectedException.expect(MailetException.class);
+        expectedException.expectMessage("'threshold' should be a strictly positive double");
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .setProperty(MoveMailet.THRESHOLD, "0")
+            .build();
+
+        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        testee.init(config);
+    }
+
+    @Test
     public void headerNameShouldEqualsPropertyWhenGiven() throws Exception {
         FakeMailetConfig config = FakeMailetConfig.builder()
                 .setProperty(MoveMailet.HEADER_NAME, "my header")
