@@ -194,7 +194,7 @@ public class GuessClassificationMailet extends GenericMailet {
             HttpEntity entity = httpClient.execute(post).getEntity();
             return Optional.ofNullable(IOUtils.toString(entity.getContent(), Charsets.UTF_8));
         } catch (Exception e) {
-            LOGGER.error("Error occured while contacting classification guess service");
+            LOGGER.error("Error occured while contacting classification guess service", e);
             return Optional.empty();
         }
     }
