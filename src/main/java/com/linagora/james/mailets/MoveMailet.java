@@ -18,8 +18,8 @@
 
 package com.linagora.james.mailets;
 
-import java.io.IOException;
-import java.util.Collection;
+import java.io.Serializable;
+import java.util.Map;
 import java.util.Optional;
 
 import javax.inject.Inject;
@@ -37,12 +37,10 @@ import org.apache.james.user.api.UsersRepositoryException;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailAddress;
 import org.apache.mailet.MailetException;
-import org.apache.mailet.PerRecipientHeaders.Header;
 import org.apache.mailet.base.GenericMailet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Strings;
 import com.linagora.james.mailets.json.ClassificationGuess;
@@ -77,34 +75,31 @@ public class MoveMailet extends GenericMailet {
 
     @VisibleForTesting static final Logger LOGGER = LoggerFactory.getLogger(MoveMailet.class);
 
-    static final String HEADER_NAME = "headerName";
-    static final String HEADER_NAME_DEFAULT_VALUE = "X-Classification-Guess";
+    static final String ATTRIBUTE_NAME = "attributeName";
     static final String THRESHOLD = "threshold";
     
-    @VisibleForTesting String headerName;
+    @VisibleForTesting String attributeName;
     @VisibleForTesting double threshold;
 
     private final MailboxManager mailboxManager;
     private final MailboxId.Factory mailboxIdFactory;
     private final UsersRepository usersRepository;
-    private final ObjectMapper objectMapper;
 
     @Inject
     @VisibleForTesting MoveMailet(MailboxManager mailboxManager, MailboxId.Factory mailboxIdFactory, UsersRepository usersRepository) {
         this.mailboxManager = mailboxManager;
         this.mailboxIdFactory = mailboxIdFactory;
         this.usersRepository = usersRepository;
-        objectMapper = new ObjectMapper();
     }
 
     @Override
     public void init() throws MessagingException {
         LOGGER.debug("init MoveMailet");
 
-        headerName = getInitParameter(HEADER_NAME, HEADER_NAME_DEFAULT_VALUE);
-        LOGGER.debug("headerName value: " + headerName);
-        if (Strings.isNullOrEmpty(headerName)) {
-            throw new MailetException("'headerName' is mandatory");
+        attributeName = getInitParameter(ATTRIBUTE_NAME, GuessClassificationMailet.DEFAULT_ATTRIBUTE_NAME);
+        LOGGER.debug(ATTRIBUTE_NAME + ": " + attributeName);
+        if (Strings.isNullOrEmpty(attributeName)) {
+            throw new MailetException("'" + ATTRIBUTE_NAME + "' is mandatory");
         }
 
         String thresholdAsString = getInitParameter(THRESHOLD);
@@ -136,28 +131,32 @@ public class MoveMailet extends GenericMailet {
         }
     }
 
-    private void move(Mail mail) {
-        for (MailAddress recipient: mail.getRecipients()) {
-            Collection<org.apache.mailet.PerRecipientHeaders.Header> headersForRecipient = mail.getPerRecipientSpecificHeaders().getHeadersForRecipient(recipient);
-            headersForRecipient.stream()
-                .filter(header -> header.getName().equals(headerName))
-                .forEach(header -> addDeliveryAttributeWhenNeeded(mail,recipient, header));
+    @SuppressWarnings("unchecked")
+    private void move(Mail mail) throws MessagingException {
+        Serializable attribute = mail.getAttribute(attributeName);
+        if (attribute == null || !(attribute instanceof Map)) {
+            LOGGER.error("Illegal type " + mail.getAttribute(attributeName).getClass() + " for mail attribute " + attributeName);
+        } else {
+            move(mail, (Map<String, ClassificationGuess>) mail.getAttribute(attributeName));
         }
     }
 
-    private void addDeliveryAttributeWhenNeeded(Mail mail, MailAddress recipient, Header header) {
-        getClassificationGuess(recipient, header.getValue())
-            .filter(classificationGuess -> classificationGuess.getConfidence() >= threshold)
-            .map(classificationGuess -> getMailboxName(recipient, classificationGuess))
-            .ifPresent(mailboxName -> setAttribute(mail, recipient, mailboxName.get()));
+    private void move(Mail mail, Map<String, ClassificationGuess> predictions) {
+        for (MailAddress recipient : mail.getRecipients()) {
+            try {
+                Optional.ofNullable(predictions.get(recipient.asString()))
+                    .ifPresent(classificationGuess -> addDeliveryAttributeWhenNeeded(mail, recipient, classificationGuess));
+            } catch (ClassCastException e) {
+                LOGGER.error("Illegal type " + mail.getAttribute(attributeName).getClass() + " for mail attribute " +
+                    attributeName + " and recipient " + recipient.asPrettyString());
+            }
+        }
     }
 
-    private Optional<ClassificationGuess> getClassificationGuess(MailAddress recipient, String classificationGuessAsJson) {
-        try {
-            return Optional.of(objectMapper.readValue(classificationGuessAsJson, ClassificationGuess.class));
-        } catch (IOException e) {
-            LOGGER.error("Error while parsing user " + headerName + " attribute: " + classificationGuessAsJson, e);
-            return Optional.empty();
+    private void addDeliveryAttributeWhenNeeded(Mail mail, MailAddress recipient, ClassificationGuess classificationGuess) {
+        if (classificationGuess.getConfidence() >= threshold) {
+            getMailboxName(recipient, classificationGuess)
+                .ifPresent(mailboxName -> setAttribute(mail, recipient, mailboxName));
         }
     }
 

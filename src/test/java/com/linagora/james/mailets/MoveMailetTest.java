@@ -39,12 +39,12 @@ public class MoveMailetTest {
     private UsersRepository usersRepository = null;
 
     @Test
-    public void initShouldThrowWhenHeaderNameIsEmpty() throws Exception {
+    public void initShouldThrowWhenAttributeNameIsEmpty() throws Exception {
         expectedException.expect(MailetException.class);
-        expectedException.expectMessage("'headerName' is mandatory");
+        expectedException.expectMessage("'attributeName' is mandatory");
 
         FakeMailetConfig config = FakeMailetConfig.builder()
-                .setProperty(MoveMailet.HEADER_NAME, "")
+                .setProperty(MoveMailet.ATTRIBUTE_NAME, "")
                 .build();
         
         MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
@@ -116,22 +116,22 @@ public class MoveMailetTest {
     }
 
     @Test
-    public void headerNameShouldEqualsPropertyWhenGiven() throws Exception {
+    public void attributeNameShouldEqualsPropertyWhenGiven() throws Exception {
         FakeMailetConfig config = FakeMailetConfig.builder()
-                .setProperty(MoveMailet.HEADER_NAME, "my header")
+                .setProperty(MoveMailet.ATTRIBUTE_NAME, "my header")
                 .setProperty(MoveMailet.THRESHOLD, "98.3")
                 .build();
         
         MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(config);
         
-        assertThat(testee.headerName).isEqualTo("my header");
+        assertThat(testee.attributeName).isEqualTo("my header");
     }
 
     @Test
     public void thresholdShouldEqualsPropertyWhenGiven() throws Exception {
         FakeMailetConfig config = FakeMailetConfig.builder()
-                .setProperty(MoveMailet.HEADER_NAME, "my header")
+                .setProperty(MoveMailet.ATTRIBUTE_NAME, "my header")
                 .setProperty(MoveMailet.THRESHOLD, "98.3")
                 .build();
         

@@ -19,6 +19,7 @@
 package com.linagora.james.mailets;
 
 import java.io.IOException;
+import java.io.Serializable;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Collection;
@@ -99,9 +100,12 @@ public class GuessClassificationMailet extends GenericMailet {
     static final String THREAD_COUNT = "threadCount";
     static final String HEADER_NAME_DEFAULT_VALUE = "X-Classification-Guess";
     static final int THREAD_COUNT_DEFAULT_VALUE = 2;
-    
+    public static final String ATTRIBUTE_NAME = "attributeName";
+    public static final String DEFAULT_ATTRIBUTE_NAME = "com.linagora.james.mailets.ClassificationGuess";
+
     @VisibleForTesting String serviceUrl;
     @VisibleForTesting String headerName;
+    @VisibleForTesting String attributeName;
     @VisibleForTesting Optional<Integer> timeoutInMs;
     private final UUIDGenerator uuidGenerator;
     private final ObjectMapper objectMapper;
@@ -133,10 +137,17 @@ public class GuessClassificationMailet extends GenericMailet {
             throw new MailetException("'serviceUrl' is mandatory");
         }
 
+
         headerName = getInitParameter(HEADER_NAME, HEADER_NAME_DEFAULT_VALUE);
         LOGGER.debug("headerName value: " + headerName);
         if (Strings.isNullOrEmpty(headerName)) {
             throw new MailetException("'headerName' is mandatory");
+        }
+
+        attributeName = getInitParameter(ATTRIBUTE_NAME, DEFAULT_ATTRIBUTE_NAME);
+        LOGGER.debug(ATTRIBUTE_NAME + " value: " + headerName);
+        if (Strings.isNullOrEmpty(attributeName)) {
+            throw new MailetException("'" + ATTRIBUTE_NAME + "' is mandatory");
         }
     }
 
@@ -163,7 +174,7 @@ public class GuessClassificationMailet extends GenericMailet {
         try {
             Future<Optional<String>> predictionFuture = executorService.submit(() -> getClassificationGuess(mail));
             awaitTimeout(predictionFuture)
-                .ifPresent(classificationGuess -> addHeaders(mail, classificationGuess));
+                .ifPresent(classificationGuess -> addHeadersAndAttribute(mail, classificationGuess));
         } catch (Exception e) {
             LOGGER.error("Exception while calling Classification API", e);
         }
@@ -209,17 +220,23 @@ public class GuessClassificationMailet extends GenericMailet {
         return new ClassificationRequestBodySerializer(mail, uuidGenerator).toJsonAsString();
     }
 
-    @VisibleForTesting void addHeaders(Mail mail, String classificationGuesses) {
-        Optional.ofNullable(classificationGuesses)
-            .map(guesses -> extractClassificationGuessesPart(guesses))
-            .orElse(ImmutableMap.of())
+    @VisibleForTesting void addHeadersAndAttribute(Mail mail, String classificationGuesses) {
+        Map<String, ClassificationGuess> stringClassificationGuessMap = Optional.ofNullable(classificationGuesses)
+            .map(this::extractClassificationGuessesPart)
+            .orElse(ImmutableMap.of());
+
+        mail.setAttribute(attributeName, (Serializable) stringClassificationGuessMap);
+
+        stringClassificationGuessMap
             .entrySet()
             .forEach(entry -> addRecipientHeader(mail, entry));
     }
 
     private Map<String, ClassificationGuess> extractClassificationGuessesPart(String classificationGuesses) {
         try {
-            return objectMapper.readValue(classificationGuesses, ClassificationGuesses.class).getResults();
+            return ImmutableMap.copyOf(
+                objectMapper.readValue(classificationGuesses, ClassificationGuesses.class)
+                    .getResults());
         } catch (IOException e) {
             LOGGER.error("Error occurred while deserializing classification guesses: " + classificationGuesses, e);
             return ImmutableMap.of();
