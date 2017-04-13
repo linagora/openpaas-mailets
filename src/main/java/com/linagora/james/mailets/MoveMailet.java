@@ -167,6 +167,7 @@ public class MoveMailet extends GenericMailet {
             MailboxPath mailboxPath = mailbox.getMailboxPath();
             return Optional.of(mailboxPath.getName());
         } catch (MailboxException e) {
+            LOGGER.warn("Could not retrieve mailbox with ID " + classificationGuess.getMailboxId() + " for " + user.asPrettyString());
             return Optional.empty();
         }
     }
