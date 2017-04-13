@@ -173,7 +173,8 @@ public class MoveMailet extends GenericMailet {
     }
 
     private void setAttribute(Mail mail, MailAddress recipient, String mailboxName) {
-        mail.setAttribute(MailStore.DELIVERY_PATH_PREFIX + computeUsername(recipient), mailboxName);
+        String userAttribute = MailStore.DELIVERY_PATH_PREFIX + computeUsername(recipient);
+        mail.setAttribute(userAttribute, mailboxName);
     }
 
     private String computeUsername(MailAddress recipient) {
