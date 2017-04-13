@@ -125,23 +125,23 @@ public class MoveMailet extends GenericMailet {
     @Override
     public void service(Mail mail) throws MessagingException {
         try {
-            move(mail);
+            addMoveAttribute(mail);
         } catch (Exception e) {
             LOGGER.error("Exception while moving message", e);
         }
     }
 
     @SuppressWarnings("unchecked")
-    private void move(Mail mail) throws MessagingException {
+    private void addMoveAttribute(Mail mail) throws MessagingException {
         Serializable attribute = mail.getAttribute(attributeName);
         if (attribute == null || !(attribute instanceof Map)) {
             LOGGER.error("Illegal type " + mail.getAttribute(attributeName).getClass() + " for mail attribute " + attributeName);
         } else {
-            move(mail, (Map<String, ClassificationGuess>) mail.getAttribute(attributeName));
+            addMoveAttribute(mail, (Map<String, ClassificationGuess>) mail.getAttribute(attributeName));
         }
     }
 
-    private void move(Mail mail, Map<String, ClassificationGuess> predictions) {
+    private void addMoveAttribute(Mail mail, Map<String, ClassificationGuess> predictions) {
         for (MailAddress recipient : mail.getRecipients()) {
             try {
                 Optional.ofNullable(predictions.get(recipient.asString()))
