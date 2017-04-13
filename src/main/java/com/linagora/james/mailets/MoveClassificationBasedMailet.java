@@ -52,7 +52,7 @@ import com.linagora.james.mailets.json.ClassificationGuess;
  *
  * <pre>
  * <code>
- * &lt;mailet match="All" class="MoveMailet"&gt;
+ * &lt;mailet match="All" class="MoveClassificationBasedMailet"&gt;
  *    &lt;attributeName&gt; <i>The classification attributeName name, default</i> &lt;/com.linagora.james.mailets.ClassificationGuess&gt;
  *    &lt;threshold&gt; <i>if this threshold is reach, we move the message</i> &lt;/threadCount&gt;
  * &lt;/mailet&gt;
@@ -63,7 +63,7 @@ import com.linagora.james.mailets.json.ClassificationGuess;
  * 
  * <pre>
  * <code>
- * &lt;mailet match="All" class="MoveMailet"&gt;
+ * &lt;mailet match="All" class="MoveClassificationBasedMailet"&gt;
  *    &lt;attributeName&gt;com.linagora.james.mailets.ClassificationGuess&lt;/attributeName&gt;
  *    &lt;threshold&gt;95.0&lt;/threadCount&gt;
  * &lt;/mailet&gt;
@@ -71,9 +71,9 @@ import com.linagora.james.mailets.json.ClassificationGuess;
  * </pre>
  * 
  */
-public class MoveMailet extends GenericMailet {
+public class MoveClassificationBasedMailet extends GenericMailet {
 
-    @VisibleForTesting static final Logger LOGGER = LoggerFactory.getLogger(MoveMailet.class);
+    @VisibleForTesting static final Logger LOGGER = LoggerFactory.getLogger(MoveClassificationBasedMailet.class);
 
     static final String ATTRIBUTE_NAME = "attributeName";
     static final String THRESHOLD = "threshold";
@@ -86,7 +86,8 @@ public class MoveMailet extends GenericMailet {
     private final UsersRepository usersRepository;
 
     @Inject
-    @VisibleForTesting MoveMailet(MailboxManager mailboxManager, MailboxId.Factory mailboxIdFactory, UsersRepository usersRepository) {
+    @VisibleForTesting
+    MoveClassificationBasedMailet(MailboxManager mailboxManager, MailboxId.Factory mailboxIdFactory, UsersRepository usersRepository) {
         this.mailboxManager = mailboxManager;
         this.mailboxIdFactory = mailboxIdFactory;
         this.usersRepository = usersRepository;

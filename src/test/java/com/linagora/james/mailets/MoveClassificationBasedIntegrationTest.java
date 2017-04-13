@@ -45,7 +45,7 @@ import com.jayway.awaitility.Awaitility;
 import com.jayway.awaitility.Duration;
 import com.jayway.awaitility.core.ConditionFactory;
 
-public class MoveIntegrationTest {
+public class MoveClassificationBasedIntegrationTest {
 
     private static final String DEFAULT_DOMAIN = "james.org";
     private static final String PASSWORD = "secret";

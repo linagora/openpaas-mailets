@@ -47,11 +47,11 @@ import org.testcontainers.shaded.com.google.common.collect.ImmutableMap;
 
 import com.linagora.james.mailets.json.ClassificationGuess;
 
-public class MoveMailetTest {
+public class MoveClassificationBasedMailetTest {
 
     private static final FakeMailetConfig FAKE_MAILET_CONFIG = FakeMailetConfig.builder()
         .mailetName("name")
-        .setProperty(MoveMailet.THRESHOLD, "90.1")
+        .setProperty(MoveClassificationBasedMailet.THRESHOLD, "90.1")
         .mailetContext(FakeMailContext.defaultContext())
         .build();
     @Rule
@@ -67,10 +67,10 @@ public class MoveMailetTest {
         expectedException.expectMessage("'attributeName' is mandatory");
 
         FakeMailetConfig config = FakeMailetConfig.builder()
-                .setProperty(MoveMailet.ATTRIBUTE_NAME, "")
+                .setProperty(MoveClassificationBasedMailet.ATTRIBUTE_NAME, "")
                 .build();
         
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(config);
     }
 
@@ -82,7 +82,7 @@ public class MoveMailetTest {
         FakeMailetConfig config = FakeMailetConfig.builder()
                 .build();
         
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(config);
     }
 
@@ -92,10 +92,10 @@ public class MoveMailetTest {
         expectedException.expectMessage("'threshold' is mandatory");
 
         FakeMailetConfig config = FakeMailetConfig.builder()
-                .setProperty(MoveMailet.THRESHOLD, "")
+                .setProperty(MoveClassificationBasedMailet.THRESHOLD, "")
                 .build();
         
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(config);
     }
 
@@ -105,10 +105,10 @@ public class MoveMailetTest {
         expectedException.expectMessage("'threshold' should be a strictly positive double");
 
         FakeMailetConfig config = FakeMailetConfig.builder()
-            .setProperty(MoveMailet.THRESHOLD, "invalid")
+            .setProperty(MoveClassificationBasedMailet.THRESHOLD, "invalid")
             .build();
 
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(config);
     }
 
@@ -118,10 +118,10 @@ public class MoveMailetTest {
         expectedException.expectMessage("'threshold' should be a strictly positive double");
 
         FakeMailetConfig config = FakeMailetConfig.builder()
-            .setProperty(MoveMailet.THRESHOLD, "-1")
+            .setProperty(MoveClassificationBasedMailet.THRESHOLD, "-1")
             .build();
 
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(config);
     }
 
@@ -131,21 +131,21 @@ public class MoveMailetTest {
         expectedException.expectMessage("'threshold' should be a strictly positive double");
 
         FakeMailetConfig config = FakeMailetConfig.builder()
-            .setProperty(MoveMailet.THRESHOLD, "0")
+            .setProperty(MoveClassificationBasedMailet.THRESHOLD, "0")
             .build();
 
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(config);
     }
 
     @Test
     public void attributeNameShouldEqualsPropertyWhenGiven() throws Exception {
         FakeMailetConfig config = FakeMailetConfig.builder()
-                .setProperty(MoveMailet.ATTRIBUTE_NAME, "my header")
-                .setProperty(MoveMailet.THRESHOLD, "98.3")
+                .setProperty(MoveClassificationBasedMailet.ATTRIBUTE_NAME, "my header")
+                .setProperty(MoveClassificationBasedMailet.THRESHOLD, "98.3")
                 .build();
         
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(config);
         
         assertThat(testee.attributeName).isEqualTo("my header");
@@ -154,11 +154,11 @@ public class MoveMailetTest {
     @Test
     public void thresholdShouldEqualsPropertyWhenGiven() throws Exception {
         FakeMailetConfig config = FakeMailetConfig.builder()
-                .setProperty(MoveMailet.ATTRIBUTE_NAME, "my header")
-                .setProperty(MoveMailet.THRESHOLD, "98.3")
+                .setProperty(MoveClassificationBasedMailet.ATTRIBUTE_NAME, "my header")
+                .setProperty(MoveClassificationBasedMailet.THRESHOLD, "98.3")
                 .build();
         
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(config);
         
         assertThat(testee.threshold).isEqualTo(98.3);
@@ -166,13 +166,13 @@ public class MoveMailetTest {
 
     @Test
     public void getMailetInfoShouldReturnMailetName() {
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         assertThat(testee.getMailetInfo()).isEqualTo("MoveMailet Mailet");
     }
 
     @Test
     public void serviceShouldNotAddStorageDirectivesWhenNoAttribute() throws Exception {
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(FAKE_MAILET_CONFIG);
 
         FakeMail mail = FakeMail.builder()
@@ -186,7 +186,7 @@ public class MoveMailetTest {
 
     @Test
     public void serviceShouldNotAddStorageDirectivesWhenWrongAttribute() throws Exception {
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(FAKE_MAILET_CONFIG);
 
         FakeMail mail = FakeMail.builder()
@@ -201,7 +201,7 @@ public class MoveMailetTest {
 
     @Test
     public void serviceShouldNotAddStorageDirectivesWhenEmptyAttribute() throws Exception {
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(FAKE_MAILET_CONFIG);
 
         FakeMail mail = FakeMail.builder()
@@ -216,7 +216,7 @@ public class MoveMailetTest {
 
     @Test
     public void serviceShouldNotAddStorageDirectivesWhenOneWrongAttribute() throws Exception {
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(FAKE_MAILET_CONFIG);
 
         FakeMail mail = FakeMail.builder()
@@ -232,7 +232,7 @@ public class MoveMailetTest {
 
     @Test
     public void serviceShouldNotAddStorageDirectivesWhenOneAttributeUnderThreashold() throws Exception {
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(FAKE_MAILET_CONFIG);
 
         FakeMail mail = FakeMail.builder()
@@ -253,7 +253,7 @@ public class MoveMailetTest {
 
     @Test
     public void serviceShouldAddStorageDirectivesWhenOneAttributeAboveThreashold() throws Exception {
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(FAKE_MAILET_CONFIG);
 
         String mailboxName = "james-dev";
@@ -284,7 +284,7 @@ public class MoveMailetTest {
 
     @Test
     public void serviceShouldAddStorageDirectivesWhenOneAttributeEqualsThreashold() throws Exception {
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(FAKE_MAILET_CONFIG);
 
         String mailboxName = "james-dev";
@@ -315,7 +315,7 @@ public class MoveMailetTest {
 
     @Test
     public void serviceShouldAddStorageDirectivesWhenUserCanNotBeRetrieved() throws Exception {
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(FAKE_MAILET_CONFIG);
 
         String mailboxName = "james-dev";
@@ -346,7 +346,7 @@ public class MoveMailetTest {
 
     @Test
     public void serviceShouldAddStorageDirectivesWhenTwoUsers() throws Exception {
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(FAKE_MAILET_CONFIG);
 
         String mailboxName = "james-dev";
@@ -383,7 +383,7 @@ public class MoveMailetTest {
 
     @Test
     public void serviceShouldNotMailOnMailWithoutRecipients() throws Exception {
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(FAKE_MAILET_CONFIG);
 
         FakeMail mail = FakeMail.builder()
@@ -396,7 +396,7 @@ public class MoveMailetTest {
 
     @Test
     public void serviceShouldIgnorePerRecipientMailboxManagerErrors() throws Exception {
-        MoveMailet testee = new MoveMailet(mailboxManager, mailboxIdFactory, usersRepository);
+        MoveClassificationBasedMailet testee = new MoveClassificationBasedMailet(mailboxManager, mailboxIdFactory, usersRepository);
         testee.init(FAKE_MAILET_CONFIG);
 
         String mailboxName = "james-dev";
