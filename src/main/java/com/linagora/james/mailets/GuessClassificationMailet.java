@@ -192,7 +192,9 @@ public class GuessClassificationMailet extends GenericMailet {
             post.setEntity(new StringEntity(asJson(mail)));
             
             HttpEntity entity = httpClient.execute(post).getEntity();
-            return Optional.ofNullable(IOUtils.toString(entity.getContent(), Charsets.UTF_8));
+            String response = IOUtils.toString(entity.getContent(), Charsets.UTF_8);
+            LOGGER.debug("Response body: " + response);
+            return Optional.ofNullable(response);
         } catch (Exception e) {
             LOGGER.error("Error occured while contacting classification guess service", e);
             return Optional.empty();
@@ -206,7 +208,9 @@ public class GuessClassificationMailet extends GenericMailet {
     }
 
     private String asJson(Mail mail) throws MessagingException, IOException {
-        return new ClassificationRequestBodySerializer(mail, uuidGenerator).toJsonAsString();
+        String jsonAsString = new ClassificationRequestBodySerializer(mail, uuidGenerator).toJsonAsString();
+        LOGGER.debug("Request body: " + jsonAsString);
+        return jsonAsString;
     }
 
     @VisibleForTesting void addHeaders(Mail mail, String classificationGuesses) {
