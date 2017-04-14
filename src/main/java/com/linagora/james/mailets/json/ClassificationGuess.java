@@ -18,6 +18,7 @@
 
 package com.linagora.james.mailets.json;
 
+import java.io.Serializable;
 import java.util.Objects;
 import java.util.Optional;
 
@@ -26,7 +27,7 @@ import com.fasterxml.jackson.databind.annotation.JsonPOJOBuilder;
 import com.google.common.base.Preconditions;
 
 @JsonDeserialize(builder=ClassificationGuess.Builder.class)
-public class ClassificationGuess {
+public class ClassificationGuess implements Serializable {
 
     public static Builder builder() {
         return new Builder();

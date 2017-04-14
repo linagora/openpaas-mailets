@@ -105,6 +105,20 @@ public class GuessClassificationMailetTest {
     }
 
     @Test
+    public void initShouldThrowWhenAttributeNameIsEmpty() throws Exception {
+        expectedException.expect(MailetException.class);
+        expectedException.expectMessage("'attributeName' is mandatory");
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .setProperty(GuessClassificationMailet.SERVICE_URL, "my url")
+            .setProperty(GuessClassificationMailet.ATTRIBUTE_NAME, "")
+            .build();
+
+        GuessClassificationMailet testee = new GuessClassificationMailet();
+        testee.init(config);
+    }
+
+    @Test
     public void initShouldThrowWhenTimeOutInMsIsEmpty() throws Exception {
         expectedException.expect(MessagingException.class);
 
@@ -282,7 +296,7 @@ public class GuessClassificationMailetTest {
             .thenThrow(new MessagingException());
         
         GuessClassificationMailet testee = new GuessClassificationMailet();
-        testee.addHeaders(mail, "");
+        testee.addHeadersAndAttribute(mail, "");
     }
 
     @Test
@@ -303,7 +317,7 @@ public class GuessClassificationMailetTest {
             "    \"confidence\":50.07615280151367}" +
             "}," +
             "\"errors\":{}}";
-        testee.addHeaders(mail, header);
+        testee.addHeadersAndAttribute(mail, header);
 
         PerRecipientHeaders expected = new PerRecipientHeaders();
         expected.addHeaderForRecipient(PerRecipientHeaders.Header.builder()

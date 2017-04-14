@@ -18,6 +18,7 @@
 package com.linagora.james.mailets;
 
 import org.apache.james.mailbox.model.MailboxConstants;
+import org.apache.james.mailbox.model.MailboxId;
 import org.apache.james.mailets.TemporaryJamesServer;
 import org.apache.james.mailets.configuration.CommonProcessors;
 import org.apache.james.mailets.configuration.MailetConfiguration;
@@ -44,7 +45,7 @@ import com.jayway.awaitility.Awaitility;
 import com.jayway.awaitility.Duration;
 import com.jayway.awaitility.core.ConditionFactory;
 
-public class ClassificationIntegrationTest {
+public class MoveClassificationBasedIntegrationTest {
 
     private static final String DEFAULT_DOMAIN = "james.org";
     private static final String PASSWORD = "secret";
@@ -95,15 +96,18 @@ public class ClassificationIntegrationTest {
     }
 
     @Test
-    public void classificationShouldCustomizeMailHeaders() throws Exception {
+    public void moveShouldMoveMessageWhenThresholdIsReached() throws Exception {
         String recipientTo = "to@" + DEFAULT_DOMAIN;
+        String mailboxName = "JAMES";
+        jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(MailboxConstants.USER_NAMESPACE, recipientTo, mailboxName);
+        MailboxId mailboxId = jamesServer.getProbe(MailboxProbeImpl.class).getMailbox(MailboxConstants.USER_NAMESPACE, recipientTo, mailboxName).getMailboxId();
         String response = "{\"results\":" +
-            "{\"" + recipientTo + "\":{" +
-            "    \"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
-            "    \"mailboxName\":\"JAMES\"," +
-            "    \"confidence\":50.07615280151367}" +
-            "}," +
-            "\"errors\":{}}";
+                "{\"" + recipientTo + "\":{" +
+                "    \"mailboxId\":\"" + mailboxId.serialize() + "\"," +
+                "    \"mailboxName\":\"" + mailboxName + "\"," +
+                "    \"confidence\":98.07615280151367}" +
+                "}," +
+                "\"errors\":{}}";
         mockServerClient
             .when(HttpRequest.request()
                     .withMethod("POST")
@@ -117,26 +121,28 @@ public class ClassificationIntegrationTest {
         String from = "from@" + DEFAULT_DOMAIN;
         dataProbe.addUser(from, PASSWORD);
         dataProbe.addUser(recipientTo, PASSWORD);
-        jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(MailboxConstants.USER_NAMESPACE, recipientTo, "INBOX");
 
         try (SMTPMessageSender messageSender = SMTPMessageSender.noAuthentication(LOCALHOST_IP, SMTP_PORT, DEFAULT_DOMAIN);
              IMAPMessageReader imapMessageReader = new IMAPMessageReader(LOCALHOST_IP, IMAP_PORT)) {
             messageSender.sendMessage(from, recipientTo);
             calmlyAwait.until(messageSender::messageHasBeenSent);
-            calmlyAwait.until(() -> imapMessageReader.userReceivedMessage(recipientTo, PASSWORD));
-
-            calmlyAwait.until(() -> imapMessageReader.readFirstMessageHeadersInInbox(recipientTo, PASSWORD)
-                .contains("X-Classification-Guess: {" +
-                    "\"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
-                    "\"mailboxName\":\"JAMES\"," +
-                    "\"confidence\":50.07615280151367}"));
+            calmlyAwait.until(() -> imapMessageReader.userReceivedMessageInMailbox(recipientTo, PASSWORD, mailboxName));
         }
     }
 
     @Test
-    public void mailShouldStillBeDeliveredWhenClassificationFails() throws Exception {
+    public void moveShouldMoveMessageToSubfolderWhenThresholdIsReached() throws Exception {
         String recipientTo = "to@" + DEFAULT_DOMAIN;
-        String response = "{}";
+        String mailboxName = "JAMES.GITHUB";
+        jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(MailboxConstants.USER_NAMESPACE, recipientTo, mailboxName);
+        MailboxId mailboxId = jamesServer.getProbe(MailboxProbeImpl.class).getMailbox(MailboxConstants.USER_NAMESPACE, recipientTo, mailboxName).getMailboxId();
+        String response = "{\"results\":" +
+                "{\"" + recipientTo + "\":{" +
+                "    \"mailboxId\":\"" + mailboxId.serialize() + "\"," +
+                "    \"mailboxName\":\"JAMES/GITHUB\"," +
+                "    \"confidence\":98.07615280151367}" +
+                "}," +
+                "\"errors\":{}}";
         mockServerClient
             .when(HttpRequest.request()
                     .withMethod("POST")
@@ -150,7 +156,85 @@ public class ClassificationIntegrationTest {
         String from = "from@" + DEFAULT_DOMAIN;
         dataProbe.addUser(from, PASSWORD);
         dataProbe.addUser(recipientTo, PASSWORD);
-        jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(MailboxConstants.USER_NAMESPACE, recipientTo, "INBOX");
+
+        try (SMTPMessageSender messageSender = SMTPMessageSender.noAuthentication(LOCALHOST_IP, SMTP_PORT, DEFAULT_DOMAIN);
+             IMAPMessageReader imapMessageReader = new IMAPMessageReader(LOCALHOST_IP, IMAP_PORT)) {
+            messageSender.sendMessage(from, recipientTo);
+            calmlyAwait.until(messageSender::messageHasBeenSent);
+            calmlyAwait.until(() -> imapMessageReader.userReceivedMessageInMailbox(recipientTo, PASSWORD, mailboxName));
+        }
+    }
+
+    @Test
+    public void moveShouldMoveMessageWhenMultipleRecipients() throws Exception {
+        String recipientTo = "to@" + DEFAULT_DOMAIN;
+        String mailboxName = "JAMES";
+        jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(MailboxConstants.USER_NAMESPACE, recipientTo, mailboxName);
+        MailboxId mailboxId = jamesServer.getProbe(MailboxProbeImpl.class).getMailbox(MailboxConstants.USER_NAMESPACE, recipientTo, mailboxName).getMailboxId();
+        String recipientTo2 = "to2@" + DEFAULT_DOMAIN;
+        String mailboxName2 = "Test";
+        jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(MailboxConstants.USER_NAMESPACE, recipientTo2, mailboxName2);
+        MailboxId mailboxId2 = jamesServer.getProbe(MailboxProbeImpl.class).getMailbox(MailboxConstants.USER_NAMESPACE, recipientTo2, mailboxName2).getMailboxId();
+        String response = "{\"results\":{" +
+                "\"" + recipientTo + "\":{" +
+                "    \"mailboxId\":\"" + mailboxId.serialize() + "\"," +
+                "    \"mailboxName\":\"" + mailboxName + "\"," +
+                "    \"confidence\":98.07615280151367}," +
+                "\"" + recipientTo2 + "\":{" +
+                "    \"mailboxId\":\"" + mailboxId2.serialize() + "\"," +
+                "    \"mailboxName\":\"" + mailboxName2 + "\"," +
+                "    \"confidence\":92.1234567896532}" +
+                "}," +
+                "\"errors\":{}}";
+        mockServerClient
+            .when(HttpRequest.request()
+                    .withMethod("POST")
+                    .withPath("/email/classification/predict")
+                    .withQueryStringParameter(new Parameter("recipients", "to@james.org")),
+                Times.exactly(1))
+            .respond(HttpResponse.response(response));
+
+        DataProbe dataProbe = jamesServer.getProbe(DataProbeImpl.class);
+        dataProbe.addDomain(DEFAULT_DOMAIN);
+        String from = "from@" + DEFAULT_DOMAIN;
+        dataProbe.addUser(from, PASSWORD);
+        dataProbe.addUser(recipientTo, PASSWORD);
+
+        try (SMTPMessageSender messageSender = SMTPMessageSender.noAuthentication(LOCALHOST_IP, SMTP_PORT, DEFAULT_DOMAIN);
+             IMAPMessageReader imapMessageReader = new IMAPMessageReader(LOCALHOST_IP, IMAP_PORT)) {
+            messageSender.sendMessage(from, recipientTo);
+            calmlyAwait.until(messageSender::messageHasBeenSent);
+            calmlyAwait.until(() -> imapMessageReader.userReceivedMessageInMailbox(recipientTo, PASSWORD, mailboxName));
+            calmlyAwait.until(() -> imapMessageReader.userReceivedMessageInMailbox(recipientTo2, PASSWORD, mailboxName2));
+        }
+    }
+
+    @Test
+    public void moveShouldNotMoveMessageWhenThresholdIsNotReached() throws Exception {
+        String recipientTo = "to@" + DEFAULT_DOMAIN;
+        String mailboxName = "JAMES";
+        jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(MailboxConstants.USER_NAMESPACE, recipientTo, mailboxName);
+        MailboxId mailboxId = jamesServer.getProbe(MailboxProbeImpl.class).getMailbox(MailboxConstants.USER_NAMESPACE, recipientTo, mailboxName).getMailboxId();
+        String response = "{\"results\":" +
+                "{\"" + recipientTo + "\":{" +
+                "    \"mailboxId\":\"" + mailboxId.serialize() + "\"," +
+                "    \"mailboxName\":\"" + mailboxName + "\"," +
+                "    \"confidence\":50.07615280151367}" +
+                "}," +
+                "\"errors\":{}}";
+        mockServerClient
+            .when(HttpRequest.request()
+                    .withMethod("POST")
+                    .withPath("/email/classification/predict")
+                    .withQueryStringParameter(new Parameter("recipients", "to@james.org")),
+                Times.exactly(1))
+            .respond(HttpResponse.response(response));
+
+        DataProbe dataProbe = jamesServer.getProbe(DataProbeImpl.class);
+        dataProbe.addDomain(DEFAULT_DOMAIN);
+        String from = "from@" + DEFAULT_DOMAIN;
+        dataProbe.addUser(from, PASSWORD);
+        dataProbe.addUser(recipientTo, PASSWORD);
 
         try (SMTPMessageSender messageSender = SMTPMessageSender.noAuthentication(LOCALHOST_IP, SMTP_PORT, DEFAULT_DOMAIN);
              IMAPMessageReader imapMessageReader = new IMAPMessageReader(LOCALHOST_IP, IMAP_PORT)) {
