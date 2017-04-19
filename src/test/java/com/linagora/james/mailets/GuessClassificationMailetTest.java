@@ -18,10 +18,12 @@
 package com.linagora.james.mailets;
 
 import static com.linagora.james.mailets.GuessClassificationMailet.HEADER_NAME_DEFAULT_VALUE;
+import static com.linagora.james.mailets.GuessClassificationMailet.JSON_CONTENT_TYPE_UTF8;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import java.io.InputStream;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Properties;
@@ -48,7 +50,9 @@ import org.mockserver.model.HttpCallback;
 import org.mockserver.model.HttpRequest;
 import org.mockserver.model.HttpResponse;
 import org.mockserver.model.Parameter;
+import org.mockserver.model.StringBody;
 
+import com.google.common.base.Charsets;
 import com.google.common.base.Throwables;
 import com.linagora.james.mailets.json.FakeUUIDGenerator;
 
@@ -372,6 +376,57 @@ public class GuessClassificationMailetTest {
         assertThat(mail.getPerRecipientSpecificHeaders()).isEqualTo(expected);
     }
 
+    @Test
+    public void serviceShouldAddHeaderWhenMessageWithCharset() throws Exception {
+        String response = "{\"results\":" +
+                "{\"user@james.org\":{" +
+                "    \"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
+                "    \"mailboxName\":\"JAMES\"," +
+                "    \"confidence\":50.07615280151367}" +
+                "}," +
+                "\"errors\":{}}";
+        mockServerClient.when(
+            HttpRequest.request()
+                .withMethod("POST")
+                .withPath("/email/classification/predict")
+                .withHeader("Content-Type", JSON_CONTENT_TYPE_UTF8)
+                .withQueryStringParameter(new Parameter("recipients", "to@james.org", "cc@james.org"))
+                .withBody(new StringBody(
+                    "{\"messageId\":\"524e4f85-2d2f-4927-ab98-bd7a2f689773\"," +
+                        "\"from\":[{\"name\":\"User\",\"address\":\"user@james.org\"}]," +
+                        "\"recipients\":{\"to\":[{\"name\":\"User\",\"address\":\"user@james.org\"}]," +
+                        "\"cc\":[]," +
+                        "\"bcc\":[]}," +
+                        "\"subject\":[\"éééééààààà\"]," +
+                        "\"textBody\":\"éééééààààà\"}",
+                    Charsets.UTF_8)),
+                Times.exactly(1))
+            .respond(HttpResponse.response(response));
+
+        FakeMailetConfig config = FakeMailetConfig.builder()
+                .setProperty(GuessClassificationMailet.SERVICE_URL, "http://localhost:" + mockServerRule.getPort() + "/email/classification/predict")
+                .build();
+        GuessClassificationMailet testee = new GuessClassificationMailet(new FakeUUIDGenerator());
+        testee.init(config);
+
+        InputStream systemResourceAsStream = ClassLoader.getSystemResourceAsStream("eml/utf8.eml");
+        MimeMessage mimeMessage = new MimeMessage(Session.getDefaultInstance(new Properties()), systemResourceAsStream);
+        FakeMail mail = FakeMail.builder()
+            .mimeMessage(mimeMessage)
+            .recipients(new MailAddress("to@james.org"), new MailAddress("cc@james.org"))
+            .build();
+
+        testee.service(mail);
+
+        PerRecipientHeaders expected = new PerRecipientHeaders();
+        expected.addHeaderForRecipient(PerRecipientHeaders.Header.builder()
+                .name(HEADER_NAME_DEFAULT_VALUE)
+                .value("{\"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\",\"mailboxName\":\"JAMES\",\"confidence\":50.07615280151367}")
+                .build(),
+            new MailAddress("user@james.org"));
+        assertThat(mail.getPerRecipientSpecificHeaders()).isEqualTo(expected);
+    }
+    
     @Test
     public void serviceShouldAddMultipleHeadersWhenSeveralRecipientsInAnswer() throws Exception {
         String response = "{\"results\":" +
