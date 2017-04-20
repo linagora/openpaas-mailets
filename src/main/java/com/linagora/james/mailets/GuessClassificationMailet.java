@@ -135,7 +135,9 @@ public class GuessClassificationMailet extends GenericMailet {
         }
 
         headerName = getInitParameter(HEADER_NAME, HEADER_NAME_DEFAULT_VALUE);
-        LOGGER.debug("headerName value: " + headerName);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("headerName value: " + headerName);
+        }
         if (Strings.isNullOrEmpty(headerName)) {
             throw new MailetException("'headerName' is mandatory");
         }
@@ -210,7 +212,9 @@ public class GuessClassificationMailet extends GenericMailet {
 
     private String asJson(Mail mail) throws MessagingException, IOException {
         String jsonAsString = new ClassificationRequestBodySerializer(mail, uuidGenerator).toJsonAsString();
-        LOGGER.debug("Request body: " + jsonAsString);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Request body: " + jsonAsString);
+        }
         return jsonAsString;
     }
 
