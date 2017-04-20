@@ -63,7 +63,7 @@ public class ClassificationRequestBody {
     }
 
     private static Message toMime4jMessage(Mail mail) throws IOException, MessagingException {
-        ByteArrayOutputStream rawMessage = new ByteArrayOutputStream();
+        ByteArrayOutputStream rawMessage = new ByteArrayOutputStream(getSanitizedMailSize(mail));
         mail.getMessage().writeTo(rawMessage);
 
         return MessageBuilder
@@ -71,6 +71,13 @@ public class ClassificationRequestBody {
                 .use(MIME_ENTITY_CONFIG)
                 .parse(new ByteArrayInputStream(rawMessage.toByteArray()))
                 .build();
+    }
+
+    private static int getSanitizedMailSize(Mail mail) throws MessagingException {
+        if (mail.getMessageSize() > 0) {
+            return Long.valueOf(mail.getMessageSize()).intValue();
+        }
+        return 0;
     }
 
     private static Optional<String> mainTextContent(MessageContent messageContent) {
