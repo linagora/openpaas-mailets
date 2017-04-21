@@ -92,6 +92,7 @@ import com.linagora.james.mailets.json.UUIDGenerator;
 public class GuessClassificationMailet extends GenericMailet {
 
     @VisibleForTesting static final Logger LOGGER = LoggerFactory.getLogger(GuessClassificationMailet.class);
+    @VisibleForTesting static final String JSON_CONTENT_TYPE_UTF8 = "application/json; charset=UTF-8";
 
     static final String SERVICE_URL = "serviceUrl";
     static final String HEADER_NAME = "headerName";
@@ -134,7 +135,9 @@ public class GuessClassificationMailet extends GenericMailet {
         }
 
         headerName = getInitParameter(HEADER_NAME, HEADER_NAME_DEFAULT_VALUE);
-        LOGGER.debug("headerName value: " + headerName);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("headerName value: " + headerName);
+        }
         if (Strings.isNullOrEmpty(headerName)) {
             throw new MailetException("'headerName' is mandatory");
         }
@@ -188,15 +191,15 @@ public class GuessClassificationMailet extends GenericMailet {
     private Optional<String> getClassificationGuess(Mail mail) {
         try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
             HttpPost post = new HttpPost(serviceUrlWithQueryParameters(mail.getRecipients()));
-            post.addHeader("Content-Type", "application/json");
-            post.setEntity(new StringEntity(asJson(mail)));
+            post.addHeader("Content-Type", JSON_CONTENT_TYPE_UTF8);
+            post.setEntity(new StringEntity(asJson(mail), Charsets.UTF_8));
             
             HttpEntity entity = httpClient.execute(post).getEntity();
             String response = IOUtils.toString(entity.getContent(), Charsets.UTF_8);
             LOGGER.debug("Response body: " + response);
             return Optional.ofNullable(response);
         } catch (Exception e) {
-            LOGGER.error("Error occured while contacting classification guess service", e);
+            LOGGER.error("Error occurred while contacting classification guess service", e);
             return Optional.empty();
         }
     }
@@ -209,13 +212,15 @@ public class GuessClassificationMailet extends GenericMailet {
 
     private String asJson(Mail mail) throws MessagingException, IOException {
         String jsonAsString = new ClassificationRequestBodySerializer(mail, uuidGenerator).toJsonAsString();
-        LOGGER.debug("Request body: " + jsonAsString);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("Request body: " + jsonAsString);
+        }
         return jsonAsString;
     }
 
     @VisibleForTesting void addHeaders(Mail mail, String classificationGuesses) {
         Optional.ofNullable(classificationGuesses)
-            .map(guesses -> extractClassificationGuessesPart(guesses))
+            .map(this::extractClassificationGuessesPart)
             .orElse(ImmutableMap.of())
             .entrySet()
             .forEach(entry -> addRecipientHeader(mail, entry));

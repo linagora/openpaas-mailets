@@ -12,6 +12,7 @@
     <properties>
         <james.version>3.0.0-beta6-SNAPSHOT</james.version>
         <mime4j.version>0.8.0</mime4j.version>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
     <dependencies>
