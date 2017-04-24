@@ -17,6 +17,8 @@
  *******************************************************************************/
 package com.linagora.james.mailets;
 
+import java.util.Base64;
+
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailets.TemporaryJamesServer;
 import org.apache.james.mailets.configuration.CommonProcessors;
@@ -120,6 +122,8 @@ public class ClassificationIntegrationTest {
                 .match("RecipientIsLocal")
                 .clazz("com.linagora.james.mailets.GuessClassificationMailet")
                 .addProperty(GuessClassificationMailet.SERVICE_URL, "http://localhost:" + mockServerRule.getPort() + "/email/classification/predict")
+                .addProperty(GuessClassificationMailet.SERVICE_USERNAME, "username")
+                .addProperty(GuessClassificationMailet.SERVICE_PASSWORD, "password")
                 .build())
             .addMailet(MailetConfiguration.builder()
                 .match("RecipientIsLocal")
@@ -151,6 +155,46 @@ public class ClassificationIntegrationTest {
     @After
     public void tearDown() {
         jamesServer.shutdown();
+    }
+
+    @Test
+    public void classificationShouldCorrectlyAuthenticateToDataRestApi() throws Exception {
+        String recipientTo = "to@" + DEFAULT_DOMAIN;
+        String response = "{\"results\":" +
+            "{\"" + recipientTo + "\":{" +
+            "    \"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
+            "    \"mailboxName\":\"JAMES\"," +
+            "    \"confidence\":50.07615280151367}" +
+            "}," +
+            "\"errors\":{}}";
+        mockServerClient
+            .when(HttpRequest.request()
+                    .withHeader("Authorization", "Basic " + Base64.getEncoder().encodeToString("username:password".getBytes()))
+                    .withMethod("POST")
+                    .withPath("/email/classification/predict")
+                    .withQueryStringParameter(new Parameter("recipients", "to@james.org")),
+                Times.exactly(1))
+            .respond(HttpResponse.response(response));
+
+        DataProbe dataProbe = jamesServer.getProbe(DataProbeImpl.class);
+        dataProbe.addDomain(DEFAULT_DOMAIN);
+        String from = "from@" + DEFAULT_DOMAIN;
+        dataProbe.addUser(from, PASSWORD);
+        dataProbe.addUser(recipientTo, PASSWORD);
+        jamesServer.getProbe(MailboxProbeImpl.class).createMailbox(MailboxConstants.USER_NAMESPACE, recipientTo, "INBOX");
+
+        try (SMTPMessageSender messageSender = SMTPMessageSender.noAuthentication(LOCALHOST_IP, SMTP_PORT, DEFAULT_DOMAIN);
+             IMAPMessageReader imapMessageReader = new IMAPMessageReader(LOCALHOST_IP, IMAP_PORT)) {
+            messageSender.sendMessage(from, recipientTo);
+            calmlyAwait.until(messageSender::messageHasBeenSent);
+            calmlyAwait.until(() -> imapMessageReader.userReceivedMessage(recipientTo, PASSWORD));
+
+            calmlyAwait.until(() -> imapMessageReader.readFirstMessageHeadersInInbox(recipientTo, PASSWORD)
+                .contains("X-Classification-Guess: {" +
+                    "\"mailboxId\":\"cfe49390-f391-11e6-88e7-ddd22b16a7b9\"," +
+                    "\"mailboxName\":\"JAMES\"," +
+                    "\"confidence\":50.07615280151367}"));
+        }
     }
 
     @Test
@@ -218,5 +262,4 @@ public class ClassificationIntegrationTest {
             calmlyAwait.until(() -> imapMessageReader.userReceivedMessage(recipientTo, PASSWORD));
         }
     }
-
 }
