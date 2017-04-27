@@ -21,23 +21,24 @@ package com.linagora.james.mailets;
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.util.Collection;
 import java.util.Map;
 import java.util.Optional;
-import java.util.concurrent.ExecutionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 
 import javax.mail.MessagingException;
 import javax.mail.internet.AddressException;
 
 import org.apache.commons.io.IOUtils;
 import org.apache.http.HttpEntity;
+import org.apache.http.HttpHost;
+import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.fluent.Executor;
+import org.apache.http.client.fluent.Request;
 import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
+import org.apache.http.entity.ContentType;
 import org.apache.http.entity.StringEntity;
 import org.apache.http.impl.client.CloseableHttpClient;
 import org.apache.http.impl.client.HttpClients;
@@ -56,6 +57,7 @@ import com.google.common.annotations.VisibleForTesting;
 import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
+import com.google.common.primitives.Ints;
 import com.linagora.james.mailets.json.ClassificationGuess;
 import com.linagora.james.mailets.json.ClassificationGuesses;
 import com.linagora.james.mailets.json.ClassificationRequestBodySerializer;
@@ -70,6 +72,8 @@ import com.linagora.james.mailets.json.UUIDGenerator;
  * <code>
  * &lt;mailet match="All" class="GuessClassificationMailet"&gt;
  *    &lt;serviceUrl&gt; <i>The URL of the classification webservice</i> &lt;/serviceUrl&gt;
+ *    &lt;serviceUsername&gt; <i>The username to use for authentication with the classification webservice</i> &lt;/serviceUsername&gt;
+ *    &lt;servicePassword&gt; <i>The password to use for authentication with the classification webservice</i> &lt;/servicePassword&gt;
  *    &lt;headerName&gt; <i>The classification message header name, default=X-Classification-Guess</i> &lt;/headerName&gt;
  *    &lt;threadCount&gt; <i>The number of threads used for the timeout</i> &lt;/threadCount&gt;
  *    &lt;timeoutInMs&gt; <i>The timeout in milliseconds the code will wait for answer of the prediction API. If not specified, infinite.</i> &lt;/timeoutInMs&gt;
@@ -83,6 +87,8 @@ import com.linagora.james.mailets.json.UUIDGenerator;
  * <code>
  * &lt;mailet match="All" class="GuessClassificationMailet"&gt;
  *    &lt;serviceUrl&gt;http://localhost:9000/email/classification/predict&lt;/serviceUrl&gt;
+ *    &lt;serviceUsername&gt;username&lt;/serviceUsername&gt;
+ *    &lt;servicePassword&gt;password&lt;/servicePassword&gt;
  *    &lt;headerName&gt;X-Classification-Guess&lt;/headerName&gt;
  * &lt;/mailet&gt;
  * </code>
@@ -94,7 +100,10 @@ public class GuessClassificationMailet extends GenericMailet {
     @VisibleForTesting static final Logger LOGGER = LoggerFactory.getLogger(GuessClassificationMailet.class);
     @VisibleForTesting static final String JSON_CONTENT_TYPE_UTF8 = "application/json; charset=UTF-8";
 
+    static final int DEFAULT_TIME = Ints.checkedCast(TimeUnit.SECONDS.toMillis(30));
     static final String SERVICE_URL = "serviceUrl";
+    static final String SERVICE_USERNAME = "serviceUsername";
+    static final String SERVICE_PASSWORD = "servicePassword";
     static final String HEADER_NAME = "headerName";
     static final String TIMEOUT_IN_MS = "timeoutInMs";
     static final String THREAD_COUNT = "threadCount";
@@ -102,11 +111,13 @@ public class GuessClassificationMailet extends GenericMailet {
     static final int THREAD_COUNT_DEFAULT_VALUE = 2;
     
     @VisibleForTesting String serviceUrl;
+    @VisibleForTesting String serviceUsername;
+    @VisibleForTesting String servicePassword;
     @VisibleForTesting String headerName;
     @VisibleForTesting Optional<Integer> timeoutInMs;
     private final UUIDGenerator uuidGenerator;
     private final ObjectMapper objectMapper;
-    @VisibleForTesting ExecutorService executorService;
+    private Executor executor;
 
     public GuessClassificationMailet() {
         this(new UUIDGenerator());
@@ -121,17 +132,27 @@ public class GuessClassificationMailet extends GenericMailet {
     @Override
     public void init() throws MessagingException {
         LOGGER.debug("init GuessClassificationMailet");
-        executorService = Executors.newFixedThreadPool(
-            MailetUtil.getInitParameterAsStrictlyPositiveInteger(
-                getInitParameter(THREAD_COUNT),
-                THREAD_COUNT_DEFAULT_VALUE));
-
         timeoutInMs = parseTimeout();
 
         serviceUrl = getInitParameter(SERVICE_URL);
-        LOGGER.debug("serviceUrl value: " + serviceUrl);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("serviceUrl value: " + serviceUrl);
+        }
         if (Strings.isNullOrEmpty(serviceUrl)) {
             throw new MailetException("'serviceUrl' is mandatory");
+        }
+
+        serviceUsername = getInitParameter(SERVICE_USERNAME);
+        if (LOGGER.isDebugEnabled()) {
+            LOGGER.debug("serviceUsername value: " + serviceUsername);
+        }
+        if (Strings.isNullOrEmpty(serviceUsername)) {
+            throw new MailetException("'serviceUsername' is mandatory");
+        }
+
+        servicePassword = getInitParameter(SERVICE_PASSWORD);
+        if (Strings.isNullOrEmpty(servicePassword)) {
+            throw new MailetException("'servicePassword' is mandatory");
         }
 
         headerName = getInitParameter(HEADER_NAME, HEADER_NAME_DEFAULT_VALUE);
@@ -140,6 +161,21 @@ public class GuessClassificationMailet extends GenericMailet {
         }
         if (Strings.isNullOrEmpty(headerName)) {
             throw new MailetException("'headerName' is mandatory");
+        }
+
+        executor = createHttpExecutor();
+    }
+
+    private Executor createHttpExecutor() throws MailetException {
+        try {
+            URIBuilder uriBuilder = new URIBuilder(serviceUrl);
+            HttpHost host = new HttpHost(uriBuilder.getHost(), uriBuilder.getPort(), uriBuilder.getScheme());
+
+            return Executor.newInstance()
+                .authPreemptive(host)
+                .auth(host, new UsernamePasswordCredentials(serviceUsername, servicePassword));
+        } catch (URISyntaxException e) {
+            throw new MailetException("invalid 'serviceUrl'", e);
         }
     }
 
@@ -164,27 +200,14 @@ public class GuessClassificationMailet extends GenericMailet {
     @Override
     public void service(Mail mail) throws MessagingException {
         try {
-            Future<Optional<String>> predictionFuture = executorService.submit(() -> getClassificationGuess(mail));
-            awaitTimeout(predictionFuture)
-                .ifPresent(classificationGuess -> addHeaders(mail, classificationGuess));
+            String classificationGuess = executor.execute(
+                    Request.Post(serviceUrlWithQueryParameters(mail.getRecipients()))
+                            .socketTimeout(timeoutInMs.orElse(DEFAULT_TIME))
+                            .bodyString(asJson(mail), ContentType.APPLICATION_JSON))
+                    .returnContent().asString(StandardCharsets.UTF_8);
+            addHeaders(mail, classificationGuess);
         } catch (Exception e) {
             LOGGER.error("Exception while calling Classification API", e);
-        }
-    }
-
-    private Optional<String> awaitTimeout(Future<Optional<String>> objectFuture) {
-        try {
-            if (timeoutInMs.isPresent()) {
-                return objectFuture.get(timeoutInMs.get(), TimeUnit.MILLISECONDS);
-            } else {
-                return objectFuture.get();
-            }
-        } catch (TimeoutException e) {
-            LOGGER.warn("Could not retrieve prediction before timeout of " + timeoutInMs);
-            return Optional.empty();
-        } catch (InterruptedException|ExecutionException e) {
-            LOGGER.error("Could not retrieve prediction", e);
-            return Optional.empty();
         }
     }
 
@@ -203,7 +226,6 @@ public class GuessClassificationMailet extends GenericMailet {
             return Optional.empty();
         }
     }
-
     private URI serviceUrlWithQueryParameters(Collection<MailAddress> recipients) throws URISyntaxException {
         URIBuilder uriBuilder = new URIBuilder(serviceUrl);
         recipients.forEach(address -> uriBuilder.addParameter("recipients", address.asString()));
