@@ -21,5 +21,6 @@
         <logger name="org.apache.james.mailetcontainer.impl.JamesMailetContext" level="DEBUG"/>
 
         <logger name="com.linagora" level="DEBUG" />
+        <logger name="http.guessClassification" level="DEBUG" />
 
 </configuration>

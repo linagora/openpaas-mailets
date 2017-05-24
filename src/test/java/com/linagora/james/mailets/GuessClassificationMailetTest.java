@@ -455,7 +455,8 @@ public class GuessClassificationMailetTest {
                                "\"cc\":[{\"name\":null,\"address\":\"cc@james.org\"}]," +
                                "\"bcc\":[]}," +
                            "\"subject\":[\"my subject\"]," +
-                           "\"textBody\":\"this is my body\"}"),
+                           "\"textBody\":\"this is my body\"," +
+                           "\"date\":\"2017-05-24T15:23:11+02:00\"}"),
                    Times.exactly(1))
             .respond(HttpResponse.response(response));
 
@@ -474,6 +475,7 @@ public class GuessClassificationMailetTest {
                 .addCcRecipient("cc@james.org")
                 .setSubject("my subject")
                 .setText("this is my body")
+                .addHeader("Date", "Wed, 24 May 2017 06:23:11 -0700")
                 .build())
             .recipients(new MailAddress("to@james.org"), new MailAddress("cc@james.org"))
             .build();
@@ -511,7 +513,8 @@ public class GuessClassificationMailetTest {
                         "\"cc\":[]," +
                         "\"bcc\":[]}," +
                         "\"subject\":[\"éééééààààà\"]," +
-                        "\"textBody\":\"éééééààààà\"}",
+                        "\"textBody\":\"éééééààààà\"," +
+                        "\"date\":\"2017-04-20T05:01:20+02:00\"}",
                     Charsets.UTF_8)),
                 Times.exactly(1))
             .respond(HttpResponse.response(response));
@@ -566,7 +569,8 @@ public class GuessClassificationMailetTest {
                         "\"cc\":[{\"name\":null,\"address\":\"cc@james.org\"}]," +
                         "\"bcc\":[]}," +
                         "\"subject\":[\"my subject\"]," +
-                        "\"textBody\":\"this is my body\"}"),
+                        "\"textBody\":\"this is my body\"," +
+                        "\"date\":\"2017-05-24T15:23:11+02:00\"}"),
                 Times.exactly(1))
             .respond(HttpResponse.response(response));
 
@@ -584,6 +588,7 @@ public class GuessClassificationMailetTest {
                 .addToRecipient("to@james.org")
                 .addCcRecipient("cc@james.org")
                 .setSubject("my subject")
+                .addHeader("Date", "Wed, 24 May 2017 06:23:11 -0700")
                 .setText("this is my body")
                 .build())
             .recipients(new MailAddress("to@james.org"), new MailAddress("cc@james.org"))
