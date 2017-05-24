@@ -18,6 +18,8 @@
 
 package com.linagora.james.mailets;
 
+import static org.zalando.logbook.HeaderFilters.authorization;
+
 import java.io.IOException;
 import java.net.URI;
 import java.net.URISyntaxException;
@@ -32,10 +34,12 @@ import javax.mail.internet.AddressException;
 
 import org.apache.http.HttpHost;
 import org.apache.http.auth.UsernamePasswordCredentials;
+import org.apache.http.client.HttpClient;
 import org.apache.http.client.fluent.Executor;
 import org.apache.http.client.fluent.Request;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.ContentType;
+import org.apache.http.impl.client.HttpClientBuilder;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailAddress;
 import org.apache.mailet.MailetException;
@@ -43,6 +47,11 @@ import org.apache.mailet.PerRecipientHeaders;
 import org.apache.mailet.base.GenericMailet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.zalando.logbook.DefaultHttpLogWriter;
+import org.zalando.logbook.DefaultHttpLogWriter.Level;
+import org.zalando.logbook.Logbook;
+import org.zalando.logbook.httpclient.LogbookHttpRequestInterceptor;
+import org.zalando.logbook.httpclient.LogbookHttpResponseInterceptor;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -91,6 +100,7 @@ public class GuessClassificationMailet extends GenericMailet {
 
     @VisibleForTesting static final Logger LOGGER = LoggerFactory.getLogger(GuessClassificationMailet.class);
     @VisibleForTesting static final String JSON_CONTENT_TYPE_UTF8 = "application/json; charset=UTF-8";
+    private static final Logger HTTP_GUESS_CLASSIFICATION_LOGGER = LoggerFactory.getLogger("http.guessClassification");
 
     static final int DEFAULT_TIME = Ints.checkedCast(TimeUnit.SECONDS.toMillis(30));
     static final String SERVICE_URL = "serviceUrl";
@@ -162,15 +172,26 @@ public class GuessClassificationMailet extends GenericMailet {
         try {
             URIBuilder uriBuilder = new URIBuilder(serviceUrl);
             HttpHost host = new HttpHost(uriBuilder.getHost(), uriBuilder.getPort(), uriBuilder.getScheme());
+            HttpClient httpClient = HttpClientBuilder.create()
+                    .addInterceptorFirst(new LogbookHttpRequestInterceptor(logbook()))
+                    .addInterceptorFirst(new LogbookHttpResponseInterceptor())
+                    .build();
 
-            return Executor.newInstance()
+            return Executor.newInstance(httpClient)
                 .authPreemptive(host)
                 .auth(host, new UsernamePasswordCredentials(serviceUsername, servicePassword));
         } catch (URISyntaxException e) {
             throw new MailetException("invalid 'serviceUrl'", e);
         }
     }
-
+    
+    private Logbook logbook() {
+        return Logbook.builder()
+                .headerFilter(authorization())
+                .writer(new DefaultHttpLogWriter(HTTP_GUESS_CLASSIFICATION_LOGGER, Level.DEBUG))
+                .build();
+    }
+    
     private Optional<Integer> parseTimeout() throws MessagingException {
         try {
             Optional<Integer> result = Optional.ofNullable(getInitParameter(TIMEOUT_IN_MS))
@@ -196,7 +217,8 @@ public class GuessClassificationMailet extends GenericMailet {
                     Request.Post(serviceUrlWithQueryParameters(mail.getRecipients()))
                             .socketTimeout(timeoutInMs.orElse(DEFAULT_TIME))
                             .bodyString(asJson(mail), ContentType.APPLICATION_JSON))
-                    .returnContent().asString(StandardCharsets.UTF_8);
+                    .returnContent()
+                    .asString(StandardCharsets.UTF_8);
             addHeaders(mail, classificationGuess);
         } catch (Exception e) {
             LOGGER.error("Exception while calling Classification API", e);
