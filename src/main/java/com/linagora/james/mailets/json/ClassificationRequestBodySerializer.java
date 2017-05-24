@@ -21,6 +21,9 @@ import java.io.IOException;
 
 import javax.mail.MessagingException;
 
+import com.fasterxml.jackson.databind.SerializationFeature;
+import com.fasterxml.jackson.datatype.jdk8.Jdk8Module;
+import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.apache.mailet.Mail;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -28,7 +31,9 @@ import com.google.common.base.Preconditions;
 
 public class ClassificationRequestBodySerializer {
 
-    private static final ObjectMapper mapper = new ObjectMapper();
+    private static final ObjectMapper mapper = new ObjectMapper()
+        .registerModules(new JavaTimeModule(), new Jdk8Module())
+        .configure(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS, false);
 
     private final Mail mail;
     private final UUIDGenerator uuidGenerator;
