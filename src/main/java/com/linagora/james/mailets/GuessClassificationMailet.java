@@ -30,31 +30,23 @@ import java.util.concurrent.TimeUnit;
 import javax.mail.MessagingException;
 import javax.mail.internet.AddressException;
 
-import org.apache.commons.io.IOUtils;
-import org.apache.http.HttpEntity;
 import org.apache.http.HttpHost;
 import org.apache.http.auth.UsernamePasswordCredentials;
 import org.apache.http.client.fluent.Executor;
 import org.apache.http.client.fluent.Request;
-import org.apache.http.client.methods.HttpPost;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.entity.ContentType;
-import org.apache.http.entity.StringEntity;
-import org.apache.http.impl.client.CloseableHttpClient;
-import org.apache.http.impl.client.HttpClients;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailAddress;
 import org.apache.mailet.MailetException;
 import org.apache.mailet.PerRecipientHeaders;
 import org.apache.mailet.base.GenericMailet;
-import org.apache.mailet.base.MailetUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.google.common.annotations.VisibleForTesting;
-import com.google.common.base.Charsets;
 import com.google.common.base.Strings;
 import com.google.common.collect.ImmutableMap;
 import com.google.common.primitives.Ints;
@@ -211,21 +203,6 @@ public class GuessClassificationMailet extends GenericMailet {
         }
     }
 
-    private Optional<String> getClassificationGuess(Mail mail) {
-        try (CloseableHttpClient httpClient = HttpClients.createDefault()) {
-            HttpPost post = new HttpPost(serviceUrlWithQueryParameters(mail.getRecipients()));
-            post.addHeader("Content-Type", JSON_CONTENT_TYPE_UTF8);
-            post.setEntity(new StringEntity(asJson(mail), Charsets.UTF_8));
-            
-            HttpEntity entity = httpClient.execute(post).getEntity();
-            String response = IOUtils.toString(entity.getContent(), Charsets.UTF_8);
-            LOGGER.debug("Response body: " + response);
-            return Optional.ofNullable(response);
-        } catch (Exception e) {
-            LOGGER.error("Error occurred while contacting classification guess service", e);
-            return Optional.empty();
-        }
-    }
     private URI serviceUrlWithQueryParameters(Collection<MailAddress> recipients) throws URISyntaxException {
         URIBuilder uriBuilder = new URIBuilder(serviceUrl);
         recipients.forEach(address -> uriBuilder.addParameter("recipients", address.asString()));
