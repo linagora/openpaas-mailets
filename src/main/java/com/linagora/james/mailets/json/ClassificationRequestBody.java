@@ -20,6 +20,8 @@ package com.linagora.james.mailets.json;
 import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.time.ZoneId;
+import java.time.ZonedDateTime;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -53,7 +55,8 @@ public class ClassificationRequestBody {
                 Emailers.from(message.getFrom()),
                 Recipients.from(message),
                 ImmutableList.of(Optional.ofNullable(message.getSubject()).orElse("")),
-                retrieveTextPart(mail));
+                retrieveTextPart(mail),
+                Optional.ofNullable(message.getSentDate()).map(x -> x.toInstant().atZone(ZoneId.systemDefault())));
     }
 
     private static String retrieveTextPart(Mail mail) throws IOException, MessagingException {
@@ -93,13 +96,15 @@ public class ClassificationRequestBody {
     private final Recipients recipients;
     private final List<String> subject;
     private final String textBody;
+    private final Optional<ZonedDateTime> date;
 
-    private ClassificationRequestBody(UUID messageId, List<Emailer> from, Recipients recipients, List<String> subject, String textBody) {
+    private ClassificationRequestBody(UUID messageId, List<Emailer> from, Recipients recipients, List<String> subject, String textBody, Optional<ZonedDateTime> date) {
         this.messageId = messageId;
         this.from = from;
         this.recipients = recipients;
         this.subject = subject;
         this.textBody = textBody;
+        this.date = date;
     }
 
     public UUID getMessageId() {
@@ -120,5 +125,9 @@ public class ClassificationRequestBody {
 
     public String getTextBody() {
         return textBody;
+    }
+
+    public Optional<ZonedDateTime> getDate() {
+        return date;
     }
 }
