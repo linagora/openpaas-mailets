@@ -456,7 +456,7 @@ public class GuessClassificationMailetTest {
                                "\"bcc\":[]}," +
                            "\"subject\":[\"my subject\"]," +
                            "\"textBody\":\"this is my body\"," +
-                           "\"date\":\"2017-05-24T15:23:11+02:00\"}"),
+                           "\"date\":\"2017-05-24T13:23:11Z\"}"),
                    Times.exactly(1))
             .respond(HttpResponse.response(response));
 
@@ -514,7 +514,7 @@ public class GuessClassificationMailetTest {
                         "\"bcc\":[]}," +
                         "\"subject\":[\"éééééààààà\"]," +
                         "\"textBody\":\"éééééààààà\"," +
-                        "\"date\":\"2017-04-20T05:01:20+02:00\"}",
+                        "\"date\":\"2017-04-20T03:01:20Z\"}",
                     Charsets.UTF_8)),
                 Times.exactly(1))
             .respond(HttpResponse.response(response));
@@ -570,7 +570,7 @@ public class GuessClassificationMailetTest {
                         "\"bcc\":[]}," +
                         "\"subject\":[\"my subject\"]," +
                         "\"textBody\":\"this is my body\"," +
-                        "\"date\":\"2017-05-24T15:23:11+02:00\"}"),
+                        "\"date\":\"2017-05-24T13:23:11Z\"}"),
                 Times.exactly(1))
             .respond(HttpResponse.response(response));
 

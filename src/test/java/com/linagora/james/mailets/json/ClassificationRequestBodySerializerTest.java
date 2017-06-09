@@ -62,7 +62,7 @@ public class ClassificationRequestBodySerializerTest {
                 "\"recipients\":{\"to\":[],\"cc\":[],\"bcc\":[]}," +
                 "\"subject\":[\"\"]," +
                 "\"textBody\":\"\"," +
-                "\"date\":\"2017-05-24T15:23:11+02:00\"}");
+                "\"date\":\"2017-05-24T13:23:11Z\"}");
     }
 
     @Test
@@ -98,7 +98,7 @@ public class ClassificationRequestBodySerializerTest {
                 "             {\"name\":\"Bcc2\",\"address\":\"bcc2@james.org\"}," +
                 "             {\"name\":null,\"address\":\"bcc3@james.org\"}]}," +
                 "\"subject\":[\"my subject\"]," +
-                "\"date\":\"2017-05-24T15:23:11+02:00\"," +
+                "\"date\":\"2017-05-24T13:23:11Z\"," +
                 "\"textBody\":\"this is my body\"}");
     }
 
@@ -121,7 +121,7 @@ public class ClassificationRequestBodySerializerTest {
                 "\"from\":[]," +
                 "\"recipients\":{\"to\":[],\"cc\":[],\"bcc\":[]}," +
                 "\"subject\":[\"\"]," +
-                "\"date\":\"2017-05-24T15:23:11+02:00\"," +
+                "\"date\":\"2017-05-24T13:23:11Z\"," +
                 "\"textBody\":\"this is my body\"}");
     }
 
@@ -146,7 +146,7 @@ public class ClassificationRequestBodySerializerTest {
                 "\"from\":[]," +
                 "\"recipients\":{\"to\":[],\"cc\":[],\"bcc\":[]}," +
                 "\"subject\":[\"\"]," +
-                "\"date\":\"2017-05-24T15:23:11+02:00\"," +
+                "\"date\":\"2017-05-24T13:23:11Z\"," +
                 "\"textBody\":\"<p>this is my body</p>\"}");
     }
 
@@ -171,7 +171,7 @@ public class ClassificationRequestBodySerializerTest {
                 "\"from\":[]," +
                 "\"recipients\":{\"to\":[],\"cc\":[],\"bcc\":[]}," +
                 "\"subject\":[\"\"]," +
-                "\"date\":\"2017-05-24T15:23:11+02:00\"," +
+                "\"date\":\"2017-05-24T13:23:11Z\"," +
                 "\"textBody\":\"\"}");
     }
 
@@ -179,6 +179,24 @@ public class ClassificationRequestBodySerializerTest {
     public void toJsonAsStringShouldReturnNullDateWhenNotDefined() throws Exception {
         FakeMail mail = FakeMail.from(
             MimeMessageBuilder.mimeMessageBuilder()
+                .setText("")
+                .build());
+
+        ClassificationRequestBodySerializer testee = new ClassificationRequestBodySerializer(mail, new FakeUUIDGenerator());
+        String jsonAsString = testee.toJsonAsString();
+        assertThatJson(jsonAsString).isEqualTo("{\"messageId\":\"524e4f85-2d2f-4927-ab98-bd7a2f689773\"," +
+            "\"from\":[]," +
+            "\"recipients\":{\"to\":[],\"cc\":[],\"bcc\":[]}," +
+            "\"subject\":[\"\"]," +
+            "\"date\": null," +
+            "\"textBody\":\"\"}");
+    }
+
+    @Test
+    public void toJsonAsStringShouldReturnNullDateWhenInvalidDateFormat() throws Exception {
+        FakeMail mail = FakeMail.from(
+            MimeMessageBuilder.mimeMessageBuilder()
+                .addHeader("Date", "Wed, 24 May 2017 ab:23:11 -0700")
                 .setText("")
                 .build());
 
