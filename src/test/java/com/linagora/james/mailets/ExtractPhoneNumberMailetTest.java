@@ -17,7 +17,7 @@
  *******************************************************************************/
 package com.linagora.james.mailets;
 
-import static com.linagora.james.mailets.ExtractPhoneNumberMailet.HEADER_NAME;
+import static com.linagora.james.mailets.ExtractPhoneNumberMailet.ATTRIBUTE_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
@@ -43,12 +43,12 @@ public class ExtractPhoneNumberMailetTest {
     public MockServerRule mockServerRule = new MockServerRule(this);
 
     @Test
-    public void initShouldThrowWhenHeaderNameIsEmpty() throws Exception {
+    public void initShouldThrowWhenAttributeNameIsEmpty() throws Exception {
         expectedException.expect(MailetException.class);
-        expectedException.expectMessage("'headerName' is mandatory");
+        expectedException.expectMessage("'attributeName' is mandatory");
 
         FakeMailetConfig config = FakeMailetConfig.builder()
-                .setProperty(HEADER_NAME, "")
+                .setProperty(ATTRIBUTE_NAME, "")
                 .build();
         
         ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
@@ -56,14 +56,14 @@ public class ExtractPhoneNumberMailetTest {
     }
 
     @Test
-    public void headerNameShouldEqualsDefaultValueWhenNotGiven() throws Exception {
+    public void attributeNameShouldEqualsDefaultValueWhenNotGiven() throws Exception {
         FakeMailetConfig config = FakeMailetConfig.builder()
                 .build();
         
         ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
         testee.init(config);
         
-        assertThat(testee.headerName).isEqualTo("X-Phone-Number");
+        assertThat(testee.attributeName).isEqualTo("X-Phone-Number");
     }
 
     @Test
@@ -78,15 +78,15 @@ public class ExtractPhoneNumberMailetTest {
     }
 
     @Test
-    public void headerNameShouldEqualsPropertyWhenGiven() throws Exception {
+    public void attributeNameShouldEqualsPropertyWhenGiven() throws Exception {
         FakeMailetConfig config = FakeMailetConfig.builder()
-                .setProperty(HEADER_NAME, "my header")
+                .setProperty(ATTRIBUTE_NAME, "my header")
                 .build();
         
         ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
         testee.init(config);
         
-        assertThat(testee.headerName).isEqualTo("my header");
+        assertThat(testee.attributeName).isEqualTo("my header");
     }
 
     @Test
@@ -114,11 +114,11 @@ public class ExtractPhoneNumberMailetTest {
     }
 
     @Test
-    public void serviceShouldExtractPhoneNumberAndAssignThemToHeader() throws Exception {
-        String header = "header";
+    public void serviceShouldExtractPhoneNumberAndAssignThemToAttribute() throws Exception {
+        String attribute = "header";
 
         FakeMailetConfig config = FakeMailetConfig.builder()
-            .setProperty(HEADER_NAME, header)
+            .setProperty(ATTRIBUTE_NAME, attribute)
             .build();
 
         ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
@@ -131,7 +131,7 @@ public class ExtractPhoneNumberMailetTest {
         when(mimeMessage.getInputStream()).thenReturn(ClassLoader.getSystemResourceAsStream("eml/mailWithPhone.eml"));
 
         testee.service(mail);
-        Mockito.verify(mimeMessage).addHeader(header, "06-32-51-31-06");
+        Mockito.verify(mail).setAttribute(attribute, ImmutableList.of("06-32-51-31-06"));
     }
 
     @Test

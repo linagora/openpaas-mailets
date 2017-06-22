@@ -74,7 +74,7 @@ import com.linagora.james.mailets.json.UUIDGenerator;
  *    &lt;serviceUrl&gt; <i>The URL of the classification webservice</i> &lt;/serviceUrl&gt;
  *    &lt;serviceUsername&gt; <i>The username to use for authentication with the classification webservice</i> &lt;/serviceUsername&gt;
  *    &lt;servicePassword&gt; <i>The password to use for authentication with the classification webservice</i> &lt;/servicePassword&gt;
- *    &lt;headerName&gt; <i>The classification message header name, default=X-Classification-Guess</i> &lt;/headerName&gt;
+ *    &lt;attributeName&gt; <i>The classification message header name, default=X-Classification-Guess</i> &lt;/attributeName&gt;
  *    &lt;threadCount&gt; <i>The number of threads used for the timeout</i> &lt;/threadCount&gt;
  *    &lt;timeoutInMs&gt; <i>The timeout in milliseconds the code will wait for answer of the prediction API. If not specified, infinite.</i> &lt;/timeoutInMs&gt;
  * &lt;/mailet&gt;
@@ -89,7 +89,7 @@ import com.linagora.james.mailets.json.UUIDGenerator;
  *    &lt;serviceUrl&gt;http://localhost:9000/email/classification/predict&lt;/serviceUrl&gt;
  *    &lt;serviceUsername&gt;username&lt;/serviceUsername&gt;
  *    &lt;servicePassword&gt;password&lt;/servicePassword&gt;
- *    &lt;headerName&gt;X-Classification-Guess&lt;/headerName&gt;
+ *    &lt;attributeName&gt;X-Classification-Guess&lt;/attributeName&gt;
  * &lt;/mailet&gt;
  * </code>
  * </pre>
@@ -104,7 +104,7 @@ public class GuessClassificationMailet extends GenericMailet {
     static final String SERVICE_URL = "serviceUrl";
     static final String SERVICE_USERNAME = "serviceUsername";
     static final String SERVICE_PASSWORD = "servicePassword";
-    static final String HEADER_NAME = "headerName";
+    static final String HEADER_NAME = "attributeName";
     static final String TIMEOUT_IN_MS = "timeoutInMs";
     static final String THREAD_COUNT = "threadCount";
     static final String HEADER_NAME_DEFAULT_VALUE = "X-Classification-Guess";
@@ -157,10 +157,10 @@ public class GuessClassificationMailet extends GenericMailet {
 
         headerName = getInitParameter(HEADER_NAME, HEADER_NAME_DEFAULT_VALUE);
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("headerName value: " + headerName);
+            LOGGER.debug("attributeName value: " + headerName);
         }
         if (Strings.isNullOrEmpty(headerName)) {
-            throw new MailetException("'headerName' is mandatory");
+            throw new MailetException("'attributeName' is mandatory");
         }
 
         executor = createHttpExecutor();

@@ -24,7 +24,6 @@ import java.util.Optional;
 
 import javax.mail.MessagingException;
 
-import com.google.common.base.Joiner;
 import com.google.common.base.Splitter;
 import com.google.common.collect.ImmutableList;
 import com.google.common.collect.Streams;
@@ -43,12 +42,13 @@ import com.google.i18n.phonenumbers.PhoneNumberUtil;
 import com.linagora.james.mailets.json.UUIDGenerator;
 
 /**
- * This mailet adds a header to the mail if it found a phone number in the signature of the mail
+ * This mailet adds a attribute to the mail with all phone number found in the mail. The attribute type is List<String>
+ * and it is empty if no phone number where found.
  *
  * <pre>
  * <code>
  * &lt;mailet match="All" class="ExtractPhoneNumberMailet"&gt;
- *    &lt;headerName&gt; <i>The phone message header name, default=X-Phone-Number</i> &lt;/headerName&gt;
+ *    &lt;attributeName&gt; <i>The phone message attribute name, default=X-Phone-Number</i> &lt;/attributeName&gt;
  *    &lt;locales&gt; <i>The locales used to find the phone number, locales should be separated by
  *    a comma, default=fr,en</i> &lt;/locales&gt;
  * &lt;/mailet&gt
@@ -60,7 +60,7 @@ import com.linagora.james.mailets.json.UUIDGenerator;
  * <pre>
  * <code>
  * &lt;mailet match="All" class="ExtractPhoneNumberMailet"&gt;
- *    &lt;headerName&gt;X-Phone-Number&lt;/headerName&gt;
+ *    &lt;attributeName&gt;X-Phone-Number&lt;/attributeName&gt;
  *    &lt;locales&gt;fr, en&lt;/locales&gt;
  * &lt;/mailet&gt;
  * </code>
@@ -71,12 +71,12 @@ public class ExtractPhoneNumberMailet extends GenericMailet {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(ExtractPhoneNumberMailet.class);
 
-    static final String HEADER_NAME = "headerName";
+    static final String ATTRIBUTE_NAME = "attributeName";
     static final String LOCALES = "locales";
     static final List<String> DEFAULT_LOCALES = ImmutableList.of("fr", "en");
-    static final String HEADER_NAME_DEFAULT_VALUE = "X-Phone-Number";
+    static final String DEFAULT_ATTRIBUTE_NAME = "X-Phone-Number";
 
-    @VisibleForTesting String headerName;
+    @VisibleForTesting String attributeName;
     @VisibleForTesting List<String> locales;
 
     private final UUIDGenerator uuidGenerator;
@@ -101,7 +101,7 @@ public class ExtractPhoneNumberMailet extends GenericMailet {
 
     @Override
     public void init() throws MessagingException {
-        headerName = getInitParameter(HEADER_NAME, HEADER_NAME_DEFAULT_VALUE);
+        attributeName = getInitParameter(ATTRIBUTE_NAME, DEFAULT_ATTRIBUTE_NAME);
         locales = getInitParameterAsOptional(LOCALES)
             .transform(localesString ->
                 Splitter
@@ -111,10 +111,10 @@ public class ExtractPhoneNumberMailet extends GenericMailet {
             )
             .or(DEFAULT_LOCALES);
 
-        LOGGER.debug("headerName value: {}", headerName);
+        LOGGER.debug("attributeName value: {}", attributeName);
 
-        if (Strings.isNullOrEmpty(headerName)) {
-            throw new MailetException("'headerName' is mandatory");
+        if (Strings.isNullOrEmpty(attributeName)) {
+            throw new MailetException("'attributeName' is mandatory");
         }
     }
 
@@ -131,13 +131,7 @@ public class ExtractPhoneNumberMailet extends GenericMailet {
             Optional<String> textBody = messageContent.getTextBody();
 
             textBody.map(this::extractPhoneNumber).ifPresent(phoneNumbers -> {
-                try {
-                    if (!phoneNumbers.isEmpty()) {
-                        mail.getMessage().addHeader(headerName, Joiner.on(",").join(phoneNumbers));
-                    }
-                } catch (MessagingException e) {
-                    LOGGER.error("Exception on ExtractPhoneNumberMailet", e);
-                }
+                mail.setAttribute(attributeName, phoneNumbers);
             });
 
         } catch(Exception e) {
@@ -158,7 +152,7 @@ public class ExtractPhoneNumberMailet extends GenericMailet {
     }
 
     @VisibleForTesting
-    List<String> extractPhoneNumber(String text) {
+    ImmutableList<String> extractPhoneNumber(String text) {
         return locales
             .stream()
             .flatMap(
