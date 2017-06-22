@@ -21,6 +21,7 @@ import static com.linagora.james.mailets.ExtractPhoneNumberMailet.HEADER_NAME;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.when;
 
+import com.google.common.collect.ImmutableList;
 import org.apache.mailet.Mail;
 import org.apache.mailet.MailetException;
 import org.apache.mailet.base.test.FakeMailetConfig;
@@ -28,11 +29,10 @@ import org.junit.Rule;
 import org.junit.Test;
 import org.junit.rules.ExpectedException;
 import org.mockito.Mockito;
-import org.mockserver.client.server.MockServerClient;
 import org.mockserver.junit.MockServerRule;
 
+import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
-import java.io.ByteArrayInputStream;
 
 public class ExtractPhoneNumberMailetTest {
 
@@ -41,8 +41,6 @@ public class ExtractPhoneNumberMailetTest {
 
     @Rule
     public MockServerRule mockServerRule = new MockServerRule(this);
-
-    private MockServerClient mockServerClient;
 
     @Test
     public void initShouldThrowWhenHeaderNameIsEmpty() throws Exception {
@@ -69,6 +67,17 @@ public class ExtractPhoneNumberMailetTest {
     }
 
     @Test
+    public void localsShouldEqualsDefaultValueWhenNotGiven() throws Exception {
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .build();
+
+        ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
+        testee.init(config);
+
+        assertThat(testee.locals).isEqualTo(ExtractPhoneNumberMailet.DEFAULT_LOCALS);
+    }
+
+    @Test
     public void headerNameShouldEqualsPropertyWhenGiven() throws Exception {
         FakeMailetConfig config = FakeMailetConfig.builder()
                 .setProperty(HEADER_NAME, "my header")
@@ -78,6 +87,30 @@ public class ExtractPhoneNumberMailetTest {
         testee.init(config);
         
         assertThat(testee.headerName).isEqualTo("my header");
+    }
+
+    @Test
+    public void localsShouldEqualsPropertyWhenGiven() throws Exception {
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .setProperty(ExtractPhoneNumberMailet.LOCALS, "fr")
+            .build();
+
+        ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
+        testee.init(config);
+
+        assertThat(testee.locals).containsExactly("fr");
+    }
+
+    @Test
+    public void localsCanHaveMoreThanOneValue() throws Exception {
+        FakeMailetConfig config = FakeMailetConfig.builder()
+            .setProperty(ExtractPhoneNumberMailet.LOCALS, "fr,es,vi")
+            .build();
+
+        ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
+        testee.init(config);
+
+        assertThat(testee.locals).containsExactly("fr", "es", "vi");
     }
 
     @Test
@@ -102,26 +135,43 @@ public class ExtractPhoneNumberMailetTest {
     }
 
     @Test
-    public void getMailetInfoShouldReturnMailetName() {
+    public void getMailetInfoShouldReturnMailetName() throws MessagingException {
         ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
         assertThat(testee.getMailetInfo()).isEqualTo("ExtractPhoneNumberMailet");
     }
 
     @Test
-    public void extractPhoneNumberShouldExtractFrenchPhoneNumber() {
+    public void extractPhoneNumberShouldExtractPhoneNumberOfGivenLocal() throws MessagingException {
         ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
-        assertThat(testee.extractPhoneNumber("Call me at +33-6-32-51-31-06")).hasValue("+33-6-32-51-31-06");
+        testee.locals = ImmutableList.of("fr");
+        assertThat(testee.extractPhoneNumber("Call me at +33-6-32-51-31-06")).containsExactly("+33-6-32-51-31-06");
     }
 
     @Test
-    public void extractPhoneNumberShouldExtractOnlyLastPhoneNumber() {
+    public void extractPhoneNumberShouldExtractAllPhoneNumber() {
         ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
-        assertThat(testee.extractPhoneNumber("Call me at +33-6-32-51-31-06\n--Phone: 06 32 32 51 51")).hasValue("06 32 32 51 51");
+        testee.locals = ImmutableList.of("fr");
+        assertThat(testee.extractPhoneNumber("Call me at +33-6-32-51-31-06\n--Phone: 06 32 32 51 51")).containsExactly("+33-6-32-51-31-06", "06 32 32 51 51");
+    }
+
+    @Test
+    public void extractPhoneNumberShouldWorkWithMultipleLocals() {
+        ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
+        testee.locals = ImmutableList.of("fr", "us");
+        assertThat(testee.extractPhoneNumber("Appeler moi au : 0632325151. Call me at (541) 754-3010")).containsExactly("0632325151", "(541) 754-3010");
+    }
+
+    @Test
+    public void extractPhoneNumberShouldNotReturnTheSameNumberTwice() {
+        ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
+        testee.locals = ImmutableList.of("fr", "en");
+        assertThat(testee.extractPhoneNumber("Call me at +33-6-32-51-31-06\n--Phone: +33-6-32-51-31-06")).containsExactly("+33-6-32-51-31-06");
     }
 
     @Test
     public void extractPhoneNumberShouldReturnEmptyIfNoPhoneNumberFound() {
         ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
+        testee.locals = ImmutableList.of("fr");
         assertThat(testee.extractPhoneNumber("Il fait beau et chaud")).isEmpty();
     }
 }
