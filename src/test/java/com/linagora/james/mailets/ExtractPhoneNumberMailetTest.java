@@ -67,14 +67,14 @@ public class ExtractPhoneNumberMailetTest {
     }
 
     @Test
-    public void localsShouldEqualsDefaultValueWhenNotGiven() throws Exception {
+    public void localesShouldEqualsDefaultValueWhenNotGiven() throws Exception {
         FakeMailetConfig config = FakeMailetConfig.builder()
             .build();
 
         ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
         testee.init(config);
 
-        assertThat(testee.locals).isEqualTo(ExtractPhoneNumberMailet.DEFAULT_LOCALS);
+        assertThat(testee.locales).isEqualTo(ExtractPhoneNumberMailet.DEFAULT_LOCALES);
     }
 
     @Test
@@ -90,27 +90,27 @@ public class ExtractPhoneNumberMailetTest {
     }
 
     @Test
-    public void localsShouldEqualsPropertyWhenGiven() throws Exception {
+    public void localesShouldEqualsPropertyWhenGiven() throws Exception {
         FakeMailetConfig config = FakeMailetConfig.builder()
-            .setProperty(ExtractPhoneNumberMailet.LOCALS, "fr")
+            .setProperty(ExtractPhoneNumberMailet.LOCALES, "fr")
             .build();
 
         ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
         testee.init(config);
 
-        assertThat(testee.locals).containsExactly("fr");
+        assertThat(testee.locales).containsExactly("fr");
     }
 
     @Test
-    public void localsCanHaveMoreThanOneValue() throws Exception {
+    public void localesCanHaveMoreThanOneValue() throws Exception {
         FakeMailetConfig config = FakeMailetConfig.builder()
-            .setProperty(ExtractPhoneNumberMailet.LOCALS, "fr,es,vi")
+            .setProperty(ExtractPhoneNumberMailet.LOCALES, "fr,es,vi")
             .build();
 
         ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
         testee.init(config);
 
-        assertThat(testee.locals).containsExactly("fr", "es", "vi");
+        assertThat(testee.locales).containsExactly("fr", "es", "vi");
     }
 
     @Test
@@ -143,35 +143,35 @@ public class ExtractPhoneNumberMailetTest {
     @Test
     public void extractPhoneNumberShouldExtractPhoneNumberOfGivenLocal() throws MessagingException {
         ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
-        testee.locals = ImmutableList.of("fr");
+        testee.locales = ImmutableList.of("fr");
         assertThat(testee.extractPhoneNumber("Call me at +33-6-32-51-31-06")).containsExactly("+33-6-32-51-31-06");
     }
 
     @Test
     public void extractPhoneNumberShouldExtractAllPhoneNumber() {
         ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
-        testee.locals = ImmutableList.of("fr");
+        testee.locales = ImmutableList.of("fr");
         assertThat(testee.extractPhoneNumber("Call me at +33-6-32-51-31-06\n--Phone: 06 32 32 51 51")).containsExactly("+33-6-32-51-31-06", "06 32 32 51 51");
     }
 
     @Test
     public void extractPhoneNumberShouldWorkWithMultipleLocals() {
         ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
-        testee.locals = ImmutableList.of("fr", "us");
+        testee.locales = ImmutableList.of("fr", "us");
         assertThat(testee.extractPhoneNumber("Appeler moi au : 0632325151. Call me at (541) 754-3010")).containsExactly("0632325151", "(541) 754-3010");
     }
 
     @Test
     public void extractPhoneNumberShouldNotReturnTheSameNumberTwice() {
         ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
-        testee.locals = ImmutableList.of("fr", "en");
+        testee.locales = ImmutableList.of("fr", "en");
         assertThat(testee.extractPhoneNumber("Call me at +33-6-32-51-31-06\n--Phone: +33-6-32-51-31-06")).containsExactly("+33-6-32-51-31-06");
     }
 
     @Test
     public void extractPhoneNumberShouldReturnEmptyIfNoPhoneNumberFound() {
         ExtractPhoneNumberMailet testee = new ExtractPhoneNumberMailet();
-        testee.locals = ImmutableList.of("fr");
+        testee.locales = ImmutableList.of("fr");
         assertThat(testee.extractPhoneNumber("Il fait beau et chaud")).isEmpty();
     }
 }

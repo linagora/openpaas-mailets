@@ -49,8 +49,8 @@ import com.linagora.james.mailets.json.UUIDGenerator;
  * <code>
  * &lt;mailet match="All" class="ExtractPhoneNumberMailet"&gt;
  *    &lt;headerName&gt; <i>The phone message header name, default=X-Phone-Number</i> &lt;/headerName&gt;
- *    &lt;locals&gt; <i>The locals used to find the phone number, locals should be separated by
- *    a comma, default=fr,en</i> &lt;/locals&gt;
+ *    &lt;locales&gt; <i>The locales used to find the phone number, locales should be separated by
+ *    a comma, default=fr,en</i> &lt;/locales&gt;
  * &lt;/mailet&gt
  * </code>
  * </pre>
@@ -61,7 +61,7 @@ import com.linagora.james.mailets.json.UUIDGenerator;
  * <code>
  * &lt;mailet match="All" class="ExtractPhoneNumberMailet"&gt;
  *    &lt;headerName&gt;X-Phone-Number&lt;/headerName&gt;
- *    &lt;locals&gt;fr, en&lt;/locals&gt;
+ *    &lt;locales&gt;fr, en&lt;/locales&gt;
  * &lt;/mailet&gt;
  * </code>
  * </pre>
@@ -72,12 +72,12 @@ public class ExtractPhoneNumberMailet extends GenericMailet {
     private static final Logger LOGGER = LoggerFactory.getLogger(ExtractPhoneNumberMailet.class);
 
     static final String HEADER_NAME = "headerName";
-    static final String LOCALS = "locals";
-    static final List<String> DEFAULT_LOCALS = ImmutableList.of("fr", "en");
+    static final String LOCALES = "locales";
+    static final List<String> DEFAULT_LOCALES = ImmutableList.of("fr", "en");
     static final String HEADER_NAME_DEFAULT_VALUE = "X-Phone-Number";
 
     @VisibleForTesting String headerName;
-    @VisibleForTesting List<String> locals;
+    @VisibleForTesting List<String> locales;
 
     private final UUIDGenerator uuidGenerator;
     private final PhoneNumberUtil phoneNumberUtil;
@@ -102,14 +102,14 @@ public class ExtractPhoneNumberMailet extends GenericMailet {
     @Override
     public void init() throws MessagingException {
         headerName = getInitParameter(HEADER_NAME, HEADER_NAME_DEFAULT_VALUE);
-        locals = getInitParameterAsOptional(LOCALS)
-            .transform(localsString ->
+        locales = getInitParameterAsOptional(LOCALES)
+            .transform(localesString ->
                 Splitter
                     .on(',')
                     .trimResults()
-                    .splitToList(localsString)
+                    .splitToList(localesString)
             )
-            .or(DEFAULT_LOCALS);
+            .or(DEFAULT_LOCALES);
 
         LOGGER.debug("headerName value: {}", headerName);
 
@@ -159,7 +159,7 @@ public class ExtractPhoneNumberMailet extends GenericMailet {
 
     @VisibleForTesting
     List<String> extractPhoneNumber(String text) {
-        return locals
+        return locales
             .stream()
             .flatMap(
                 local ->
