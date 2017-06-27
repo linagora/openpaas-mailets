@@ -43,7 +43,6 @@ public class ClassificationRequestBody {
         .setMaxContentLen(-1)
         .setMaxHeaderCount(-1)
         .setMaxHeaderLen(-1)
-        .setMaxHeaderCount(-1)
         .setMaxLineLen(-1)
         .build();
 
