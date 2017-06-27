@@ -29,7 +29,6 @@ import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 
 import org.apache.james.mime4j.dom.Message;
-import org.apache.james.mime4j.message.MessageBuilder;
 import org.apache.james.mime4j.stream.MimeConfig;
 import org.apache.james.util.mime.MessageContentExtractor;
 import org.apache.james.util.mime.MessageContentExtractor.MessageContent;
@@ -67,8 +66,7 @@ public class ClassificationRequestBody {
         ByteArrayOutputStream rawMessage = new ByteArrayOutputStream(getSanitizedMailSize(mail));
         mail.getMessage().writeTo(rawMessage);
 
-        return MessageBuilder
-                .create()
+        return Message.Builder.of()
                 .use(MIME_ENTITY_CONFIG)
                 .parse(new ByteArrayInputStream(rawMessage.toByteArray()))
                 .build();
