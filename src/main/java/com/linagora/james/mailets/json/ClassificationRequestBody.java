@@ -28,6 +28,7 @@ import java.util.UUID;
 import javax.mail.MessagingException;
 import javax.mail.internet.MimeMessage;
 
+import org.apache.james.jmap.utils.JsoupHtmlTextExtractor;
 import org.apache.james.mime4j.dom.Message;
 import org.apache.james.mime4j.stream.MimeConfig;
 import org.apache.james.util.mime.MessageContentExtractor;
@@ -44,6 +45,7 @@ public class ClassificationRequestBody {
         .setMaxHeaderLen(-1)
         .setMaxLineLen(-1)
         .build();
+    private static final JsoupHtmlTextExtractor jsoupHtmlTextExtractor = new JsoupHtmlTextExtractor();
 
     public static ClassificationRequestBody from(Mail mail, UUID messageId) throws MessagingException, IOException {
         MimeMessage message = mail.getMessage();
@@ -82,6 +84,7 @@ public class ClassificationRequestBody {
     private static Optional<String> mainTextContent(MessageContent messageContent) {
         return messageContent.getHtmlBody()
             .filter(s -> !Strings.isNullOrEmpty(s))
+            .map(jsoupHtmlTextExtractor::toPlainText)
             .map(Optional::of)
             .filter(Optional::isPresent)
             .orElse(messageContent.getTextBody());

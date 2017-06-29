@@ -147,7 +147,7 @@ public class ClassificationRequestBodySerializerTest {
                 "\"recipients\":{\"to\":[],\"cc\":[],\"bcc\":[]}," +
                 "\"subject\":[\"\"]," +
                 "\"date\":\"2017-05-24T13:23:11Z\"," +
-                "\"textBody\":\"<p>this is my body</p>\"}");
+                "\"textBody\":\"this is my body\\n\\n\"}");
     }
 
     @Test

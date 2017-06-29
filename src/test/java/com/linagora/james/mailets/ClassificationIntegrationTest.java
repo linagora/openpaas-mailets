@@ -17,9 +17,12 @@
  *******************************************************************************/
 package com.linagora.james.mailets;
 
+import static org.mockito.Mockito.mock;
+
 import java.util.Base64;
 
 import org.apache.james.mailbox.model.MailboxConstants;
+import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
 import org.apache.james.mailets.TemporaryJamesServer;
 import org.apache.james.mailets.configuration.CommonProcessors;
 import org.apache.james.mailets.configuration.MailetConfiguration;
@@ -27,6 +30,7 @@ import org.apache.james.mailets.configuration.MailetContainer;
 import org.apache.james.mailets.configuration.ProcessorConfiguration;
 import org.apache.james.mailets.utils.SMTPMessageSender;
 import org.apache.james.modules.MailboxProbeImpl;
+import org.apache.james.modules.server.JMXServerModule;
 import org.apache.james.probe.DataProbe;
 import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.IMAPMessageReader;
@@ -80,7 +84,9 @@ public class ClassificationIntegrationTest {
             .addProcessor(CommonProcessors.sieveManagerCheck())
             .build();
 
-        jamesServer = new TemporaryJamesServer(temporaryFolder, mailetContainer);
+        jamesServer = new TemporaryJamesServer(temporaryFolder, mailetContainer,
+            new JMXServerModule(),
+            binder -> binder.bind(ListeningMessageSearchIndex.class).toInstance(mock(ListeningMessageSearchIndex.class)));
         Duration slowPacedPollInterval = Duration.FIVE_HUNDRED_MILLISECONDS;
         calmlyAwait = Awaitility.with()
             .pollInterval(slowPacedPollInterval)
