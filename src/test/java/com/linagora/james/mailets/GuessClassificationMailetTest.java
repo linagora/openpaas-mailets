@@ -166,7 +166,7 @@ public class GuessClassificationMailetTest {
     @Test
     public void initShouldThrowWhenHeaderNameIsEmpty() throws Exception {
         expectedException.expect(MailetException.class);
-        expectedException.expectMessage("'attributeName' is mandatory");
+        expectedException.expectMessage("'headerName' is mandatory");
 
         FakeMailetConfig config = FakeMailetConfig.builder()
                 .setProperty(SERVICE_URL, VALID_SERVICE_URL)

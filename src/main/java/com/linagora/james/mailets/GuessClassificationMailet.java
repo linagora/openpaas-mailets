@@ -104,7 +104,7 @@ public class GuessClassificationMailet extends GenericMailet {
     static final String SERVICE_URL = "serviceUrl";
     static final String SERVICE_USERNAME = "serviceUsername";
     static final String SERVICE_PASSWORD = "servicePassword";
-    static final String HEADER_NAME = "attributeName";
+    static final String HEADER_NAME = "headerName";
     static final String TIMEOUT_IN_MS = "timeoutInMs";
     static final String THREAD_COUNT = "threadCount";
     static final String HEADER_NAME_DEFAULT_VALUE = "X-Classification-Guess";
@@ -157,10 +157,10 @@ public class GuessClassificationMailet extends GenericMailet {
 
         headerName = getInitParameter(HEADER_NAME, HEADER_NAME_DEFAULT_VALUE);
         if (LOGGER.isDebugEnabled()) {
-            LOGGER.debug("attributeName value: " + headerName);
+            LOGGER.debug("headerName value: " + headerName);
         }
         if (Strings.isNullOrEmpty(headerName)) {
-            throw new MailetException("'attributeName' is mandatory");
+            throw new MailetException("'headerName' is mandatory");
         }
 
         executor = createHttpExecutor();
