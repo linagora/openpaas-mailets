@@ -11,8 +11,8 @@
 
     <properties>
         <jackson.version>2.6.3</jackson.version>
-        <james.version>3.0.0-RC1</james.version>
-        <mime4j.version>0.8.0</mime4j.version>
+        <james.version>3.0.0-RC2-SNAPSHOT</james.version>
+        <mime4j.version>0.8.1</mime4j.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
 
@@ -27,6 +27,7 @@
             <groupId>com.jayway.awaitility</groupId>
             <artifactId>awaitility</artifactId>
             <version>1.6.5</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
@@ -79,6 +80,7 @@
             <groupId>nl.jqno.equalsverifier</groupId>
             <artifactId>equalsverifier</artifactId>
             <version>1.7.6</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.httpcomponents</groupId>
@@ -89,6 +91,7 @@
             <groupId>org.apache.james</groupId>
             <artifactId>apache-james-mailbox-api</artifactId>
             <version>${james.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.james</groupId>
@@ -133,7 +136,6 @@
             <groupId>org.apache.james</groupId>
             <artifactId>james-server-jmap</artifactId>
             <version>${james.version}</version>
-            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.james</groupId>
@@ -152,6 +154,7 @@
             <groupId>org.apache.james</groupId>
             <artifactId>james-server-testing</artifactId>
             <version>${james.version}</version>
+            <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.apache.james</groupId>
