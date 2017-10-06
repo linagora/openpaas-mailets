@@ -21,6 +21,7 @@ import static org.mockito.Mockito.mock;
 
 import java.util.Base64;
 
+import org.apache.james.jmap.mailet.VacationMailet;
 import org.apache.james.mailbox.model.MailboxConstants;
 import org.apache.james.mailbox.store.search.ListeningMessageSearchIndex;
 import org.apache.james.mailets.TemporaryJamesServer;
@@ -28,12 +29,23 @@ import org.apache.james.mailets.configuration.CommonProcessors;
 import org.apache.james.mailets.configuration.MailetConfiguration;
 import org.apache.james.mailets.configuration.MailetContainer;
 import org.apache.james.mailets.configuration.ProcessorConfiguration;
-import org.apache.james.mailets.utils.SMTPMessageSender;
 import org.apache.james.modules.MailboxProbeImpl;
 import org.apache.james.modules.server.JMXServerModule;
 import org.apache.james.probe.DataProbe;
+import org.apache.james.transport.mailets.AddDeliveredToHeader;
+import org.apache.james.transport.mailets.LocalDelivery;
+import org.apache.james.transport.mailets.RecipientRewriteTable;
+import org.apache.james.transport.mailets.RemoteDelivery;
+import org.apache.james.transport.mailets.RemoveMimeHeader;
+import org.apache.james.transport.mailets.SetMimeHeader;
+import org.apache.james.transport.mailets.Sieve;
+import org.apache.james.transport.mailets.ToProcessor;
+import org.apache.james.transport.matchers.All;
+import org.apache.james.transport.matchers.RecipientIsLocal;
+import org.apache.james.transport.matchers.SMTPAuthSuccessful;
 import org.apache.james.utils.DataProbeImpl;
 import org.apache.james.utils.IMAPMessageReader;
+import org.apache.james.utils.SMTPMessageSender;
 import org.junit.After;
 import org.junit.Before;
 import org.junit.Rule;
@@ -102,46 +114,46 @@ public class ClassificationIntegrationTest {
             .state("transport")
             .enableJmx(true)
             .addMailet(MailetConfiguration.builder()
-                .match("SMTPAuthSuccessful")
-                .clazz("SetMimeHeader")
+                .matcher(SMTPAuthSuccessful.class)
+                .mailet(SetMimeHeader.class)
                 .addProperty("name", "X-UserIsAuth")
                 .addProperty("value", "true")
                 .build())
             .addMailet(MailetConfiguration.builder()
-                .match("All")
-                .clazz("RemoveMimeHeader")
+                .matcher(All.class)
+                .mailet(RemoveMimeHeader.class)
                 .addProperty("name", "bcc")
                 .build())
             .addMailet(MailetConfiguration.builder()
-                .match("All")
-                .clazz("RecipientRewriteTable")
+                .matcher(All.class)
+                .mailet(RecipientRewriteTable.class)
                 .build())
             .addMailet(MailetConfiguration.builder()
-                .match("RecipientIsLocal")
-                .clazz("org.apache.james.jmap.mailet.VacationMailet")
+                .matcher(RecipientIsLocal.class)
+                .mailet(VacationMailet.class)
                 .build())
             .addMailet(MailetConfiguration.builder()
-                .match("RecipientIsLocal")
-                .clazz("Sieve")
+                .matcher(RecipientIsLocal.class)
+                .mailet(Sieve.class)
                 .build())
             .addMailet(MailetConfiguration.builder()
-                .match("RecipientIsLocal")
-                .clazz("com.linagora.james.mailets.GuessClassificationMailet")
+                .matcher(RecipientIsLocal.class)
+                .mailet(GuessClassificationMailet.class)
                 .addProperty(GuessClassificationMailet.SERVICE_URL, "http://localhost:" + mockServerRule.getPort() + "/email/classification/predict")
                 .addProperty(GuessClassificationMailet.SERVICE_USERNAME, "username")
                 .addProperty(GuessClassificationMailet.SERVICE_PASSWORD, "password")
                 .build())
             .addMailet(MailetConfiguration.builder()
-                .match("RecipientIsLocal")
-                .clazz("AddDeliveredToHeader")
+                .matcher(RecipientIsLocal.class)
+                .mailet(AddDeliveredToHeader.class)
                 .build())
             .addMailet(MailetConfiguration.builder()
-                .match("RecipientIsLocal")
-                .clazz("LocalDelivery")
+                .matcher(RecipientIsLocal.class)
+                .mailet(LocalDelivery.class)
                 .build())
             .addMailet(MailetConfiguration.builder()
-                .match("SMTPAuthSuccessful")
-                .clazz("RemoteDelivery")
+                .matcher(SMTPAuthSuccessful.class)
+                .mailet(RemoteDelivery.class)
                 .addProperty("outgoingQueue", "outgoing")
                 .addProperty("delayTime", "5000, 100000, 500000")
                 .addProperty("maxRetries", "25")
@@ -151,8 +163,8 @@ public class ClassificationIntegrationTest {
                 .addProperty("bounceProcessor", "bounces")
                 .build())
             .addMailet(MailetConfiguration.builder()
-                .match("All")
-                .clazz("ToProcessor")
+                .matcher(All.class)
+                .mailet(ToProcessor.class)
                 .addProperty("processor", "relay-denied")
                 .build())
             .build();

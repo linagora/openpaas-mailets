@@ -11,7 +11,7 @@
 
     <properties>
         <jackson.version>2.6.3</jackson.version>
-        <james.version>3.0.0</james.version>
+        <james.version>3.1.0-SNAPSHOT</james.version>
         <mime4j.version>0.8.1</mime4j.version>
         <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     </properties>
@@ -162,9 +162,28 @@
             <version>${james.version}</version>
         </dependency>
         <dependency>
+            <groupId>org.apache.james</groupId>
+            <artifactId>james-server-webadmin-core</artifactId>
+            <version>${james.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.james</groupId>
+            <artifactId>james-server-webadmin-core</artifactId>
+            <version>${james.version}</version>
+            <type>test-jar</type>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
             <groupId>org.assertj</groupId>
             <artifactId>assertj-core</artifactId>
             <version>3.3.0</version>
+            <scope>test</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.eclipse.jetty</groupId>
+            <artifactId>jetty-server</artifactId>
+            <version>9.4.4.v20170414</version>
             <scope>test</scope>
         </dependency>
         <dependency>
@@ -192,7 +211,7 @@
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
-            <version>1.7.2</version>
+            <version>1.7.25</version>
         </dependency>
     </dependencies>
 
