@@ -1,3 +1,5 @@
+![Archived](https://img.shields.io/badge/Current_Status-archived-blue?style=flat)
+
 # openpaas-mailets
 
 This project offers a sample of OpenPaaS related mailets.
